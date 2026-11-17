@@ -13,11 +13,11 @@
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   }
+  var qTokens = [];   // parsed search words (see search.js)
   function hl(text) {
     var t = esc(text);
-    if (!state.q) return t;
-    var q = state.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return t.replace(new RegExp("(" + esc(q) + ")", "ig"), "<mark>$1</mark>");
+    if (!state.q || !window.MenuSearch) return t;
+    return window.MenuSearch.highlight(t, qTokens);
   }
   // keep "Non-Veg" together on one line
   function nb(html) { return html.replace(/Non-/g, "Non&#8209;"); }
@@ -45,8 +45,8 @@
     if (state.diet === "v" && !(diet === "v" || diet === "b" || !diet)) return false;
     if (state.diet === "n" && !(diet === "n" || diet === "b")) return false;
     if (!state.q) return true;
-    var q = state.q.toLowerCase();
-    return (it[0] + " " + (it[3] || "") + " " + sec.title).toLowerCase().indexOf(q) !== -1;
+    if (window.MenuSearch) return window.MenuSearch.matches(qTokens, it, sec);
+    return (it[0] + " " + (it[3] || "") + " " + sec.title).toLowerCase().indexOf(state.q.toLowerCase()) !== -1;
   }
 
   function listHTML(sec, items) {
@@ -156,8 +156,35 @@
   var t;
   $("#q").addEventListener("input", function (e) {
     clearTimeout(t);
-    t = setTimeout(function () { state.q = e.target.value.trim(); render(); }, 120);
+    t = setTimeout(function () {
+      state.q = e.target.value.trim();
+      qTokens = window.MenuSearch ? window.MenuSearch.parse(state.q) : [];
+      if (state.q && !qTokens.length) state.q = "";   // only filler words like "and"
+      render();
+    }, 120);
   });
+  /* QR code popup */
+  var qrDialog = $("#qrDialog");
+  var menuUrl = ((document.querySelector('link[rel="canonical"]') || {}).href || location.href).split("#")[0].split("?")[0];
+  if (qrDialog) {
+    $("#qrUrl").textContent = menuUrl.replace(/^https?:\/\//, "");
+    $$("[data-qr-open]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        if (typeof qrDialog.showModal === "function") qrDialog.showModal(); else qrDialog.setAttribute("open", "");
+      });
+    });
+    function closeQr() { if (qrDialog.close) qrDialog.close(); else qrDialog.removeAttribute("open"); }
+    $("[data-qr-close]").addEventListener("click", closeQr);
+    qrDialog.addEventListener("click", function (e) { if (e.target === qrDialog) closeQr(); });   // tap outside
+    $("#qrShare").addEventListener("click", function () {
+      var btn = this, data = { title: "Gautam Hotel Menu", text: "Gautam Hotel, Bardibas: menu", url: menuUrl };
+      if (navigator.share) { navigator.share(data).catch(function () {}); return; }
+      var done = function () { btn.textContent = "Link copied ✓"; setTimeout(function () { btn.textContent = "Share link"; }, 2000); };
+      if (navigator.clipboard) navigator.clipboard.writeText(menuUrl).then(done, function () { window.prompt("Copy this link:", menuUrl); });
+      else window.prompt("Copy this link:", menuUrl);
+    });
+  }
+
   // size picker (event delegation survives re-renders)
   $("#sections").addEventListener("click", function (e) {
     var b = e.target.closest(".size-chip");

@@ -13,6 +13,16 @@ It's a static website with no build step or server code. Open `index.html` in a 
 - Built for phones first, so guests can scan a QR code at the table
 
 ## Updating prices or dishes
+### Easiest: the admin page
+Open **`/admin/`** on the menu site, e.g. https://neupaneprashant.github.io/gautam-hotel-menu/admin/
+
+1. Sign in with a GitHub **fine-grained access key** that can access only this repository, with **Contents: Read and write** permission. The sign-in page explains how to create one.
+2. Find a dish, then change its name, price, veg/non-veg mark or description. You can also add, delete or reorder dishes and sections.
+3. Tap **Publish**. The live menu updates in about a minute.
+
+The admin page is hidden from search engines and does nothing without a valid key. Anyone who has a key can edit the menu, so give keys only to staff you trust; you can delete a key on GitHub at any time.
+
+### By hand
 Everything lives in **`menu-data.js`**. Each dish is one line:
 
 ```js
@@ -36,6 +46,8 @@ Save the file and reload the page.
 | `index.html` | Page layout |
 | `styles.css` | Design |
 | `app.js` | Search, filters and rendering |
+| `search.js` | Smart search: any word order, spelling variants, Nepali names, small typos |
+| `admin/` | Admin page for editing the menu |
 | `menu-data.js` | All menu items and prices |
 | `logo.png` / `logo.webp` | Official Gautam Hotel logo |
 | `favicon-*.png`, `apple-touch-icon.png`, `icon-192.png` | Browser tab and phone home-screen icons |

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Menu Admin · Gautam Hotel</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png">
+  <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<header class="bar">
+  <img class="bar-logo" src="../logo.webp" alt="Gautam Hotel" width="72" height="45">
+  <div class="bar-title">
+    <strong>Menu Admin</strong>
+    <span id="who">Not signed in</span>
+  </div>
+  <a class="bar-btn" href="../" target="_blank" rel="noopener">View menu</a>
+  <button class="bar-btn" id="signOut" type="button" hidden>Sign out</button>
+</header>
+
+<!-- ───── Sign in ───── -->
+<section class="login" id="login">
+  <div class="card">
+    <h1>Edit the menu</h1>
+    <p class="muted">Sign in with your GitHub access key to change prices and dishes. Changes go live on the menu about a minute after you publish.</p>
+    <form id="loginForm" autocomplete="off">
+      <label for="token">Access key</label>
+      <input id="token" type="password" placeholder="github_pat_…" required spellcheck="false" autocapitalize="off">
+      <label class="check"><input id="remember" type="checkbox" checked> Keep me signed in on this device</label>
+      <button class="btn btn-primary" type="submit" id="loginBtn">Sign in</button>
+      <p class="error" id="loginError" role="alert" hidden></p>
+    </form>
+    <details class="help">
+      <summary>How do I get an access key?</summary>
+      <ol>
+        <li>On GitHub, open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Settings → Developer settings → Fine-grained tokens → Generate new token</a>.</li>
+        <li><b>Token name:</b> Gautam menu admin. <b>Expiration:</b> choose how long it should work (e.g. 1 year).</li>
+        <li><b>Repository access:</b> “Only select repositories” → pick <b id="repoName">the menu repository</b>.</li>
+        <li><b>Permissions → Repository permissions → Contents:</b> “Read and write”.</li>
+        <li>Tap <b>Generate token</b>, copy it, and paste it above.</li>
+      </ol>
+      <p class="muted">The key only works for this one menu. Anyone who has it can edit the menu, so share it only with staff you trust. You can delete it on GitHub at any time.</p>
+    </details>
+  </div>
+</section>
+
+<!-- ───── Editor ───── -->
+<main class="editor" id="editor" hidden>
+  <div class="editor-top">
+    <label class="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="filter" type="search" placeholder="Find a dish to edit… e.g. momo" autocomplete="off">
+    </label>
+    <div class="editor-actions">
+      <button class="btn btn-small" type="button" id="expandAll">Open all</button>
+      <button class="btn btn-small" type="button" id="collapseAll">Close all</button>
+      <button class="btn btn-small btn-navy" type="button" id="addSectionBtn">+ New section</button>
+    </div>
+    <p class="hint">Price tips: type a number like <code>250</code>, two prices like <code>185 / 380</code>, or leave it empty to show “Ask staff”. In price tables, leave a box empty if that size or type isn't sold.</p>
+  </div>
+  <div id="sections"></div>
+</main>
+
+<div class="publish-bar" id="publishBar" hidden>
+  <span id="changeCount">No changes</span>
+  <button class="btn btn-ghost" type="button" id="discard" disabled>Discard</button>
+  <button class="btn btn-primary" type="button" id="publish" disabled>Publish</button>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<dialog class="modal" id="sectionDialog">
+  <form method="dialog" id="sectionForm">
+    <h2>New section</h2>
+    <label for="nsTitle">Section name</label>
+    <input id="nsTitle" required placeholder="e.g. Desserts">
+    <label for="nsTagline">Short line under the name (optional)</label>
+    <input id="nsTagline" placeholder="e.g. Sweet endings">
+    <label for="nsGroup">Shown under</label>
+    <select id="nsGroup"><option value="food">Food</option><option value="drinks">Drinks</option></select>
+    <label for="nsType">Layout</label>
+    <select id="nsType">
+      <option value="list">Simple list (one price per item)</option>
+      <option value="cols">Price table (several prices per item, e.g. Veg / Chicken)</option>
+    </select>
+    <div id="nsColsWrap" hidden>
+      <label for="nsCols">Column names, separated by commas</label>
+      <input id="nsCols" placeholder="e.g. Veg, Chicken, Mix">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" value="cancel" formnovalidate>Cancel</button>
+      <button class="btn btn-primary" value="ok" id="nsCreate">Add section</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="../search.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
