@@ -148,15 +148,48 @@
     return tokens(query).filter(function (t) { return !STOP[t]; });
   }
 
-  // all query words must be found somewhere in the item, its section or its diet
+  /* What a dish can be found by. One dish has many names:
+   *   the Momo row "Chicken" (Steam / Fried / Kothey / Chilli) is also
+   *   "chicken momo", "chicken steam momo", "chicken chilli momo", "kothey chicken momo" ...
+   *   "Fried Rice" (Veg / Chicken / Mix) is also "chicken fried rice", "mix fried rice" ...
+   *   "Jack Daniel's" (1000 ml … 30 ml) is also "jack daniels 60 ml" ...
+   * plus any extra names typed in the admin ("Also known as", item[4]). */
+  function labelsOf(item, section) {
+    return Array.isArray(item[1]) ? (section.cols || section.sizes || []) : [];
+  }
+  function baseWords(item, section) {
+    return tokens([item[0], item[3] || "", item[4] || "", section.title, SECTION_WORDS[section.id] || ""].join(" "));
+  }
+
+  // all query words must be found somewhere in the dish, its other names, its section, its columns or its diet
   function matches(qTokens, item, section) {
     if (!qTokens.length) return true;
     var diet = item[2] === "v" ? "veg" : item[2] === "n" ? "nonveg" : item[2] === "b" ? "veg nonveg" : "";
-    var hay = tokens([item[0], item[3] || "", section.title,
-                      SECTION_WORDS[section.id] || "", diet].join(" "));
+    var hay = baseWords(item, section).concat(tokens(labelsOf(item, section).join(" ") + " " + diet));
     return qTokens.every(function (q) {
       return hay.some(function (w) { return wordMatch(q, w); });
     });
+  }
+
+  // which price columns did the search point at? ("chicken chilli momo" -> the Chilli column)
+  function matchedColumns(qTokens, item, section) {
+    var labels = labelsOf(item, section);
+    if (!qTokens.length || !labels.length) return [];
+    var base = baseWords(item, section), scores = [], best = 0;
+    labels.forEach(function (lab, k) {
+      var lt = tokens(lab);
+      // count the query words that point at this column (and aren't already explained by the dish name)
+      var n = qTokens.filter(function (q) {
+        return lt.some(function (w) { return wordMatch(q, w); }) && !base.some(function (w) { return wordMatch(q, w); });
+      }).length;
+      scores[k] = n;
+      if (n > best) best = n;
+    });
+    if (!best) return [];
+    // "60 ml" -> only the 60 ml column, not every column containing "ml"
+    var out = [];
+    scores.forEach(function (n, k) { if (n === best) out.push(k); });
+    return out.length === labels.length ? [] : out;
   }
 
   // wrap the matching words of an already-escaped display string in <mark>
@@ -169,5 +202,5 @@
     });
   }
 
-  window.MenuSearch = { parse: parse, matches: matches, highlight: highlight, tokens: tokens };
+  window.MenuSearch = { parse: parse, matches: matches, matchedColumns: matchedColumns, highlight: highlight, tokens: tokens };
 })();

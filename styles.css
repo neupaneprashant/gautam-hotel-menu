@@ -272,6 +272,9 @@ main { max-width: 1120px; margin: 0 auto; padding: 16px 16px 40px; }
 .size-table .rs { font-size: .72em; color: var(--muted); font-weight: 500; margin-right: 2px; }
 .ptable .rs { font-size: .72em; color: var(--muted); font-weight: 500; margin-right: 1px; }
 .na { color: #c9bcae; font-weight: 400; }
+/* the price a search pointed at, e.g. "chicken chilli momo" */
+.ptable td.hit { background: #fff1c2; box-shadow: inset 0 0 0 2px #f2c94c; border-radius: 8px; }
+.ptable th.hit { color: var(--navy); }
 .na.ask { color: var(--muted); font-style: italic; font-size: .82em; }
 .size-pick { display: none; }
 .size-label { margin: 4px 0 8px; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }

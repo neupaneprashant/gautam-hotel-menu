@@ -80,12 +80,15 @@
   }
   var J = function (v) { return JSON.stringify(v); };
   function jsVal(v) { return Array.isArray(v) ? "[" + v.map(jsVal).join(", ") + "]" : J(v); }
+  // [name, price, diet, description, also-known-as]; trailing empty parts are left out
   function itemJS(it) {
     var arr = [it[0], it[1] === undefined ? null : it[1]];
-    if (it[3]) arr.push(it[2] || null, it[3]);
+    if (it[4]) arr.push(it[2] || null, it[3] || null, it[4]);
+    else if (it[3]) arr.push(it[2] || null, it[3]);
     else if (it[2]) arr.push(it[2]);
     return "[" + arr.map(jsVal).join(", ") + "]";
   }
+  function tidy(it) { while (it.length > 2 && (it[it.length - 1] == null || it[it.length - 1] === "")) it.pop(); }
   var KNOWN = { id: 1, group: 1, title: 1, tagline: 1, note: 1, cols: 1, sizes: 1, defaultSize: 1, items: 1, extra: 1 };
   function serialize(menu) {
     var out = [
@@ -93,7 +96,7 @@
       " * Gautam Hotel, Bardibas-14, Mahottari: menu data.",
       " * Prices are in Nepali Rupees (Rs.). Edited with the menu admin (/admin/) or by hand.",
       " *",
-      " * Item format: [name, price, diet, description]",
+      " * Item format: [name, price, diet, description, also known as]",
       " *   price: a number, a string such as \"185 / 380\" for two portion/type prices,",
       " *          an array when the section has `cols` (one price per column),",
       " *          (sections with `sizes`, e.g. Hard Drinks, take one price per size:",
@@ -210,6 +213,7 @@
       '<button class="icon-btn del" type="button" data-act="item-del" ' + base + ' aria-label="Delete dish">🗑</button>' +
       "</div>" + price +
       '<input class="desc" ' + base + ' data-field="desc" value="' + esc(it[3] || "") + '" placeholder="Description (optional)" aria-label="Description">' +
+      '<input class="desc" ' + base + ' data-field="aliases" value="' + esc(it[4] || "") + '" placeholder="Also known as (optional), e.g. C momo, chicken dumpling" aria-label="Also known as">' +
       "</div>";
   }
 
@@ -287,8 +291,9 @@
     if (!it) return;
     var field = el.dataset.field, r;
     if (field === "name") it[0] = el.value;
-    else if (field === "desc") { if (el.value.trim()) it[3] = el.value; else it.splice(3); }
-    else if (field === "diet") { it[2] = el.value || undefined; if (!it[2] && !it[3]) it.splice(2); }
+    else if (field === "desc") { it[3] = el.value.trim() ? el.value : null; tidy(it); }
+    else if (field === "aliases") { while (it.length < 4) it.push(null); it[4] = el.value.trim() ? el.value : null; tidy(it); }
+    else if (field === "diet") { it[2] = el.value || null; tidy(it); }
     else if (field === "price" || field === "cell") {
       r = field === "price" ? readSingle(el.value) : readCell(el.value);
       el.classList.toggle("invalid", !r.ok);
@@ -364,6 +369,122 @@
     });
   }
 
+  /* ───────── email + password logins ─────────
+   * admin/accounts.json holds, for each staff email, a copy of the owner's
+   * GitHub key locked with that person's password (PBKDF2-SHA256, 600,000
+   * rounds -> AES-256-GCM). The password itself is never stored anywhere.
+   * Signing in unlocks the key on the person's own device. */
+  var ACCOUNTS = "admin/accounts.json", ITER = 600000;
+  var signedInAs = "";
+  function bytesToB64(u8) { var s = ""; for (var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]); return btoa(s); }
+  function b64ToBytes(b) { var s = atob(b), u = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+  function normEmail(e) { return String(e || "").trim().toLowerCase(); }
+  function deriveKey(password, salt, iter) {
+    return crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]).then(function (base) {
+      return crypto.subtle.deriveKey({ name: "PBKDF2", salt: salt, iterations: iter, hash: "SHA-256" },
+        base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+    });
+  }
+  function lockKey(email, password, secret) {
+    var salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+    return deriveKey(password, salt, ITER).then(function (k) {
+      return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv, additionalData: new TextEncoder().encode(normEmail(email)) }, k, new TextEncoder().encode(secret));
+    }).then(function (ct) {
+      return { email: normEmail(email), kdf: "PBKDF2-SHA256", iter: ITER, salt: bytesToB64(salt), iv: bytesToB64(iv),
+               data: bytesToB64(new Uint8Array(ct)), added: new Date().toISOString().slice(0, 10) };
+    });
+  }
+  function unlockKey(acc, password) {
+    return deriveKey(password, b64ToBytes(acc.salt), acc.iter || ITER).then(function (k) {
+      return crypto.subtle.decrypt({ name: "AES-GCM", iv: b64ToBytes(acc.iv), additionalData: new TextEncoder().encode(acc.email) }, k, b64ToBytes(acc.data));
+    }).then(function (pt) { return new TextDecoder().decode(pt); });
+  }
+  // public copy of the logins file (served next to this page)
+  function fetchAccounts() {
+    return fetch("accounts.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) {
+      if (r.status === 404) return { accounts: [] };
+      if (!r.ok) throw new Error("Could not load logins (" + r.status + ")");
+      return r.json();
+    });
+  }
+  // the logins file through the GitHub API (to change it)
+  function readAccountsFile() {
+    return gh(repoPath + "/contents/" + ACCOUNTS + "?ref=" + encodeURIComponent(branch)).then(function (f) {
+      return { sha: f.sha, json: JSON.parse(b64decode(f.content)) };
+    }, function (e) { if (e.status === 404) return { sha: null, json: { accounts: [] } }; throw e; });
+  }
+  function writeAccountsFile(json, fileSha, message) {
+    var body = { message: message, content: b64encode(JSON.stringify(json, null, 2) + "\n"), branch: branch };
+    if (fileSha) body.sha = fileSha;
+    return gh(repoPath + "/contents/" + ACCOUNTS, { method: "PUT", body: JSON.stringify(body) });
+  }
+
+  function emailSignIn(email, password, remember) {
+    var err = $("#emailError"), btn = $("#emailBtn");
+    err.hidden = true; btn.disabled = true; btn.textContent = "Checking…";
+    if (!(window.crypto && crypto.subtle)) {
+      err.textContent = "This browser can't sign in securely. Please update it, or open the page over https."; err.hidden = false;
+      btn.disabled = false; btn.textContent = "Sign in"; return Promise.resolve();
+    }
+    return fetchAccounts().then(function (file) {
+      var acc = (file.accounts || []).filter(function (a) { return a.email === normEmail(email); })[0];
+      if (!acc) throw { login: true };
+      return unlockKey(acc, password).catch(function () { throw { login: true }; });
+    }).then(function (key) {
+      signedInAs = normEmail(email);
+      return signIn(key, remember, true);
+    }).catch(function (e) {
+      err.textContent = e && e.login ? "Wrong email or password." : (e && e.message) || "Could not sign in.";
+      err.hidden = false;
+    }).then(function () { btn.disabled = false; btn.textContent = "Sign in"; });
+  }
+
+  function renderLogins() {
+    var list = $("#loginsList");
+    list.innerHTML = "<li><span class='muted'>Loading…</span></li>";
+    return readAccountsFile().then(function (f) {
+      var accs = f.json.accounts || [];
+      list.innerHTML = accs.length ? accs.map(function (a) {
+        return "<li><span>" + esc(a.email) + "<br><small>added " + esc(a.added || "") + "</small></span>" +
+          '<button class="btn btn-small" type="button" data-remove="' + esc(a.email) + '" style="color:var(--bad)">Remove</button></li>';
+      }).join("") : "<li><span class='muted'>No staff logins yet.</span></li>";
+    }).catch(function (e) { list.innerHTML = "<li><span class='error'>" + esc(e.message) + "</span></li>"; });
+  }
+  function addLogin(email, pass, pass2) {
+    var err = $("#addLoginError"), btn = $("#addLoginBtn");
+    err.hidden = true;
+    email = normEmail(email);
+    var problem = !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? "Enter a valid email address." :
+      pass.length < 12 ? "The password must be at least 12 characters." :
+      pass !== pass2 ? "The two passwords don't match." :
+      pass.toLowerCase().indexOf(email.split("@")[0]) !== -1 ? "Don't use the email name inside the password." : "";
+    if (problem) { err.textContent = problem; err.hidden = false; return; }
+    btn.disabled = true; btn.textContent = "Saving…";
+    readAccountsFile().then(function (f) {
+      return lockKey(email, pass, token).then(function (acc) {
+        var accs = (f.json.accounts || []).filter(function (a) { return a.email !== email; });
+        accs.push(acc);
+        return writeAccountsFile({ note: "Staff logins for the menu admin. Each entry is the menu key locked with that person's password; passwords are not stored.", accounts: accs },
+          f.sha, "Menu admin: add login for " + email);
+      });
+    }).then(function () {
+      $("#addLoginForm").reset();
+      toast("Login added for " + email + ". It works in about a minute.", { ms: 6000 });
+      renderLogins();
+    }).catch(function (e) {
+      err.textContent = e.status === 403 || e.status === 404 ? "This key can't save the logins file. It needs Contents: Read and write." : "Could not add the login: " + e.message;
+      err.hidden = false;
+    }).then(function () { btn.disabled = false; btn.textContent = "Add login"; });
+  }
+  function removeLogin(email) {
+    if (!confirm("Remove the login for " + email + "? They will no longer be able to sign in.")) return;
+    readAccountsFile().then(function (f) {
+      var accs = (f.json.accounts || []).filter(function (a) { return a.email !== email; });
+      return writeAccountsFile({ note: f.json.note, accounts: accs }, f.sha, "Menu admin: remove login for " + email);
+    }).then(function () { toast("Login removed for " + email + "."); renderLogins(); },
+      function (e) { toast("Could not remove the login: " + e.message, { bad: true }); });
+  }
+
   /* ───────── load / publish ───────── */
   function load() {
     $("#who").textContent = "Loading menu…";
@@ -373,7 +494,8 @@
       data = parseMenu(text);
       original = clone(data);
       originalText = serialize(original);
-      $("#who").textContent = (user ? "@" + user + " · " : "") + REPO.owner + "/" + REPO.repo;
+      $("#who").textContent = signedInAs ? "Signed in as " + signedInAs : (user ? "@" + user + " · " : "") + REPO.owner + "/" + REPO.repo;
+      $("#loginsBtn").hidden = !!signedInAs;   // only the key holder manages logins
       $("#login").hidden = true; $("#editor").hidden = false; $("#publishBar").hidden = false; $("#signOut").hidden = false;
       render();
     });
@@ -413,17 +535,24 @@
     }).then(function () { btn.textContent = "Publish"; refreshBar(); });
   }
 
-  function signIn(key, remember) {
+  function signIn(key, remember, viaEmail) {
     token = key.trim();
     var err = $("#loginError");
     err.hidden = true;
     $("#loginBtn").disabled = true; $("#loginBtn").textContent = "Signing in…";
     return gh(repoPath).then(function (repo) {
       branch = repo.default_branch || "main";
-      try { (remember ? localStorage : sessionStorage).setItem(KEY_STORE, token); } catch (e) {}
+      try {
+        (remember ? localStorage : sessionStorage).setItem(KEY_STORE, token);
+        (remember ? localStorage : sessionStorage).setItem(KEY_STORE + "-who", viaEmail ? signedInAs : "");
+      } catch (e) {}
       return gh("/user").then(function (u) { user = u.login; }, function () {});
     }).then(load).catch(function (e) {
       token = null;
+      if (viaEmail) {                      // a stored login whose key no longer works
+        $("#emailError").textContent = e.status === 401 ? "This login has been switched off. Ask the owner for a new one." : "Could not sign in: " + e.message;
+        $("#emailError").hidden = false;
+      }
       try { localStorage.removeItem(KEY_STORE); sessionStorage.removeItem(KEY_STORE); } catch (x) {}
       err.textContent = e.status === 401 ? "That access key isn't valid. Check you copied all of it." :
         e.status === 404 || e.status === 403 ? "This key can't open the menu repository (" + REPO.owner + "/" + REPO.repo + "). Give it access to that repository." :
@@ -435,7 +564,7 @@
 
   function signOut() {
     if (data && changeCount() && !confirm("You have changes that are not published. Sign out anyway?")) return;
-    try { localStorage.removeItem(KEY_STORE); sessionStorage.removeItem(KEY_STORE); } catch (e) {}
+    try { [localStorage, sessionStorage].forEach(function (s) { s.removeItem(KEY_STORE); s.removeItem(KEY_STORE + "-who"); }); } catch (e) {}
     data = null; token = null;
     location.reload();
   }
@@ -487,10 +616,45 @@
     if (data && original && changeCount()) { e.preventDefault(); e.returnValue = ""; }
   });
 
-  var saved = null;
-  try { saved = localStorage.getItem(KEY_STORE) || sessionStorage.getItem(KEY_STORE); } catch (e) {}
-  if (saved) signIn(saved, !!localStorage.getItem(KEY_STORE));
+  $$(".tab").forEach(function (t) {
+    t.addEventListener("click", function () {
+      $$(".tab").forEach(function (x) { x.classList.toggle("is-active", x === t); x.setAttribute("aria-selected", x === t); });
+      $("#emailForm").hidden = t.dataset.tab !== "email";
+      $("#loginForm").hidden = t.dataset.tab !== "key";
+    });
+  });
+  $("#emailForm").addEventListener("submit", function (e) { e.preventDefault(); emailSignIn($("#email").value, $("#password").value, $("#remember2").checked); });
+  $("#loginsBtn").addEventListener("click", function () {
+    var d = $("#loginsDialog"); $("#addLoginError").hidden = true;
+    if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+    renderLogins();
+  });
+  $("#closeLogins").addEventListener("click", function () { $("#loginsDialog").close(); });
+  $("#addLoginForm").addEventListener("submit", function (e) { e.preventDefault(); addLogin($("#newEmail").value, $("#newPass").value, $("#newPass2").value); });
+  $("#loginsList").addEventListener("click", function (e) { var b = e.target.closest("[data-remove]"); if (b) removeLogin(b.dataset.remove); });
+
+  var saved = null, savedWho = "";
+  try {
+    saved = localStorage.getItem(KEY_STORE) || sessionStorage.getItem(KEY_STORE);
+    savedWho = localStorage.getItem(KEY_STORE + "-who") || sessionStorage.getItem(KEY_STORE + "-who") || "";
+  } catch (e) {}
+  if (saved && savedWho) {
+    // a remembered staff login: make sure the owner hasn't removed it since
+    fetchAccounts().then(function (file) {
+      var still = (file.accounts || []).some(function (a) { return a.email === savedWho; });
+      if (!still) {
+        try { [localStorage, sessionStorage].forEach(function (s) { s.removeItem(KEY_STORE); s.removeItem(KEY_STORE + "-who"); }); } catch (e) {}
+        $("#emailError").textContent = "Your login was removed by the owner.";
+        $("#emailError").hidden = false;
+        return;
+      }
+      signedInAs = savedWho;
+      signIn(saved, !!localStorage.getItem(KEY_STORE), true);
+    }, function () { signedInAs = savedWho; signIn(saved, !!localStorage.getItem(KEY_STORE), true); });
+  } else if (saved) {
+    signIn(saved, !!localStorage.getItem(KEY_STORE), false);
+  }
 
   // exposed for automated tests only
-  window.__menuAdmin = { serialize: serialize, parseMenu: parseMenu, readSingle: readSingle, readCell: readCell };
+  window.__menuAdmin = { serialize: serialize, parseMenu: parseMenu, readSingle: readSingle, readCell: readCell, lockKey: lockKey, unlockKey: unlockKey };
 })();

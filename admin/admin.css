@@ -45,10 +45,20 @@ code { background: #efe7dc; padding: 1px 5px; border-radius: 5px; font-size: .9e
 .card { max-width: 460px; margin: 0 auto; background: #fff; border-radius: 18px; padding: 24px 20px; box-shadow: 0 10px 30px -14px rgba(0, 20, 70, .3); }
 .card h1 { font-family: "Playfair Display", Georgia, serif; color: var(--navy); margin: 0 0 6px; }
 label { display: block; font-size: .8rem; font-weight: 600; color: var(--muted); margin: 14px 0 6px; }
-input[type=text], input[type=password], input[type=search], input:not([type]), select, textarea {
+input[type=text], input[type=password], input[type=search], input[type=email], input:not([type]), select, textarea {
   width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 16px;
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(0, 43, 132, .12); }
+.tabs { display: flex; gap: 4px; background: #f0e8de; border-radius: 999px; padding: 4px; margin-top: 14px; }
+.tab { flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 9px 8px; font-weight: 600; font-size: .88rem; color: var(--muted); }
+.tab.is-active { background: var(--navy); color: #fff; }
+#emailForm .btn { width: 100%; margin-top: 16px; }
+.small { font-size: .82rem; }
+.logins { list-style: none; padding: 0; margin: 10px 0; }
+.logins li { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; }
+.logins li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.logins li small { color: var(--muted); }
+.modal h3 { margin: 18px 0 0; font-size: 1rem; color: var(--navy); }
 .check { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--ink); font-size: .9rem; }
 .check input { width: 20px; height: 20px; }
 #loginForm .btn { width: 100%; margin-top: 16px; }

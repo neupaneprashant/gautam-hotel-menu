@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=20261117c">
+  <link rel="stylesheet" href="admin.css?v=20261117d">
 </head>
 <body>
 
@@ -29,8 +29,21 @@
 <section class="login" id="login">
   <div class="card">
     <h1>Edit the menu</h1>
-    <p class="muted">Sign in with your GitHub access key to change prices and dishes. Changes go live on the menu about a minute after you publish.</p>
-    <form id="loginForm" autocomplete="off">
+    <p class="muted">Sign in to change prices and dishes. Changes go live on the menu about a minute after you publish.</p>
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab is-active" data-tab="email" role="tab" aria-selected="true">Email &amp; password</button>
+      <button type="button" class="tab" data-tab="key" role="tab" aria-selected="false">Owner access key</button>
+    </div>
+    <form id="emailForm">
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="username" required placeholder="name@example.com" autocapitalize="off">
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" required>
+      <label class="check"><input id="remember2" type="checkbox" checked> Keep me signed in on this device</label>
+      <button class="btn btn-primary" type="submit" id="emailBtn">Sign in</button>
+      <p class="error" id="emailError" role="alert" hidden></p>
+    </form>
+    <form id="loginForm" autocomplete="off" hidden>
       <label for="token">Access key</label>
       <input id="token" type="password" placeholder="github_pat_…" required spellcheck="false" autocapitalize="off">
       <label class="check"><input id="remember" type="checkbox" checked> Keep me signed in on this device</label>
@@ -38,7 +51,7 @@
       <p class="error" id="loginError" role="alert" hidden></p>
     </form>
     <details class="help">
-      <summary>How do I get an access key?</summary>
+      <summary>Owner: how do I get an access key?</summary>
       <ol>
         <li>On GitHub, open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Settings → Developer settings → Fine-grained tokens → Generate new token</a>.</li>
         <li><b>Token name:</b> Gautam menu admin. <b>Expiration:</b> choose how long it should work (e.g. 1 year).</li>
@@ -46,7 +59,7 @@
         <li><b>Permissions → Repository permissions → Contents:</b> “Read and write”.</li>
         <li>Tap <b>Generate token</b>, copy it, and paste it above.</li>
       </ol>
-      <p class="muted">The key only works for this one menu. Anyone who has it can edit the menu, so share it only with staff you trust. You can delete it on GitHub at any time.</p>
+      <p class="muted">The key only works for this one menu. After signing in with it, open <b>Staff logins</b> to create email &amp; password logins for your team, so you never have to share the key itself. Deleting the key on GitHub switches off every login at once.</p>
     </details>
   </div>
 </section>
@@ -62,6 +75,7 @@
       <button class="btn btn-small" type="button" id="expandAll">Open all</button>
       <button class="btn btn-small" type="button" id="collapseAll">Close all</button>
       <button class="btn btn-small btn-navy" type="button" id="addSectionBtn">+ New section</button>
+      <button class="btn btn-small" type="button" id="loginsBtn" hidden>Staff logins</button>
     </div>
     <p class="hint">Price tips: type a number like <code>250</code>, two prices like <code>185 / 380</code>, or leave it empty to show “Ask staff”. In price tables, leave a box empty if that size or type isn't sold.</p>
   </div>
@@ -101,7 +115,28 @@
   </form>
 </dialog>
 
-<script src="../search.js?v=20261117c"></script>
-<script src="admin.js?v=20261117c"></script>
+<dialog class="modal" id="loginsDialog">
+  <h2>Staff logins</h2>
+  <p class="muted">People listed here can sign in with their email and password and edit the menu.</p>
+  <ul class="logins" id="loginsList"></ul>
+  <form id="addLoginForm" autocomplete="off">
+    <h3>Add a login</h3>
+    <label for="newEmail">Email</label>
+    <input id="newEmail" type="email" required autocapitalize="off" autocomplete="off">
+    <label for="newPass">Password (at least 12 characters)</label>
+    <input id="newPass" type="password" required minlength="12" autocomplete="new-password">
+    <label for="newPass2">Type the password again</label>
+    <input id="newPass2" type="password" required minlength="12" autocomplete="new-password">
+    <p class="muted small">Use a long password nobody could guess, e.g. three random words and a number: <code>mango-river-lamp-47</code>. Tell the person their password in person or by phone.</p>
+    <p class="error" id="addLoginError" role="alert" hidden></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" id="closeLogins">Close</button>
+      <button class="btn btn-primary" type="submit" id="addLoginBtn">Add login</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="../search.js?v=20261117d"></script>
+<script src="admin.js?v=20261117d"></script>
 </body>
 </html>

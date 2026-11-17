@@ -14,13 +14,23 @@ It's a static website with no build step or server code. Open `index.html` in a 
 
 ## Updating prices or dishes
 ### Easiest: the admin page
-Open **`/admin/`** on the menu site, e.g. https://neupaneprashant.github.io/gautam-hotel-menu/admin/
+**Admin page:** https://neupaneprashant.github.io/gautam-hotel-menu/admin/
 
-1. Sign in with a GitHub **fine-grained access key** that can access only this repository, with **Contents: Read and write** permission. The sign-in page explains how to create one.
-2. Find a dish, then change its name, price, veg/non-veg mark or description. You can also add, delete or reorder dishes and sections.
+**Owner, one-time setup**
+1. Create a GitHub **fine-grained access key** that can access only this repository, with **Repository permissions → Contents: Read and write**. The sign-in page links to the GitHub page and explains each step.
+2. On the admin page, open the **Owner access key** tab, paste the key and sign in.
+3. Tap **Staff logins** and add an email address and a password (12+ characters) for each person who may edit the menu.
+
+**Staff, every day**
+1. Sign in with your **email and password**.
+2. Find a dish, then change its price, name, veg/non-veg mark, description or "Also known as" names. You can also add, delete or reorder dishes and sections.
 3. Tap **Publish**. The live menu updates in about a minute.
 
-The admin page is hidden from search engines and does nothing without a valid key. Anyone who has a key can edit the menu, so give keys only to staff you trust; you can delete a key on GitHub at any time.
+**How the logins work:** `admin/accounts.json` holds, for each email, a copy of the owner's key locked with that person's password (PBKDF2-SHA256, 600,000 rounds, then AES-256-GCM). Passwords are never stored anywhere. The file is public, so use long passwords.
+- **Removing someone:** in **Staff logins**, remove them. Their saved sign-in is cleared the next time they open the page.
+- **If a password or phone may have been exposed:** delete the key on GitHub. That switches off every login at once. Then make a new key and re-add the logins.
+
+**Search names:** dishes are found by their name, section, price-table columns ("chicken chilli momo" finds Momo → Chicken → Chilli) and any **Also known as** names you add in the admin.
 
 ### By hand
 Everything lives in **`menu-data.js`**. Each dish is one line:

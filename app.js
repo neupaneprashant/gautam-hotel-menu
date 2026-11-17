@@ -57,6 +57,16 @@
     }).join("");
   }
 
+  // price columns the search points at, e.g. "chicken chilli momo" -> Chilli
+  function colHits(sec, it) {
+    return state.q && window.MenuSearch && window.MenuSearch.matchedColumns ? window.MenuSearch.matchedColumns(qTokens, it, sec) : [];
+  }
+  function hitHeads(sec, items) {
+    var on = {};
+    items.forEach(function (it) { colHits(sec, it).forEach(function (k) { on[k] = 1; }); });
+    return on;
+  }
+
   function sectionHTML(sec, items, extra) {
     var head = '<h3>' + esc(sec.title) + "</h3>" + (sec.tagline ? '<p class="sub">' + esc(sec.tagline) + "</p>" : "");
     var top = '<div class="section-head"><span class="ornament" aria-hidden="true">✦</span>' + head + "</div>";
@@ -65,12 +75,14 @@
     if (sec.cols) {
       body = '<div class="items-wrap">';
       if (items.length) {
+        var heads = hitHeads(sec, items);
         body += '<table class="ptable"><thead><tr><th scope="col">Item</th>' +
-          sec.cols.map(function (c) { return '<th scope="col">' + esc(c) + "</th>"; }).join("") +
+          sec.cols.map(function (c, k) { return '<th scope="col"' + (heads[k] ? ' class="hit"' : "") + ">" + esc(c) + "</th>"; }).join("") +
           "</tr></thead><tbody>" +
           items.map(function (it) {
+            var hits = colHits(sec, it);
             return '<tr><td><span class="item-name">' + dotHTML(it[2]) + "<span>" + nb(hl(it[0])) + "</span></span></td>" +
-              it[1].map(function (p) { return "<td>" + cellHTML(p) + "</td>"; }).join("") +
+              it[1].map(function (p, k) { return "<td" + (hits.indexOf(k) !== -1 ? ' class="hit"' : "") + ">" + cellHTML(p) + "</td>"; }).join("") +
               "</tr>";
           }).join("") + "</tbody></table>";
       }
@@ -88,10 +100,15 @@
   /* Hard drinks: full size table on wide screens, size picker + single-price list on phones */
   function sizedHTML(sec, items) {
     var sel = sizeSel[sec.id] != null ? sizeSel[sec.id] : (sec.defaultSize || 0);
+    var heads = hitHeads(sec, items), searched = Object.keys(heads);
+    if (searched.length && sizeSel[sec.id + ":q"] !== state.q) sel = +searched[0];   // "glenfiddich 30" -> show 30 ml
     var table = '<div class="size-table-wrap"><table class="ptable size-table"><thead><tr><th scope="col">Drink</th>' +
-      sec.sizes.map(function (s) { return '<th scope="col">' + esc(s) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+      sec.sizes.map(function (s, k) { return '<th scope="col"' + (heads[k] ? ' class="hit"' : "") + ">" + esc(s) + "</th>"; }).join("") + "</tr></thead><tbody>" +
       items.map(function (it) {
-        return "<tr><td>" + nb(hl(it[0])) + "</td>" + it[1].map(function (p) { return "<td>" + cellHTML(p) + "</td>"; }).join("") + "</tr>";
+        var hits = colHits(sec, it);
+        return "<tr><td>" + nb(hl(it[0])) + "</td>" + it[1].map(function (p, k) {
+          return "<td" + (hits.indexOf(k) !== -1 ? ' class="hit"' : "") + ">" + cellHTML(p) + "</td>";
+        }).join("") + "</tr>";
       }).join("") + "</tbody></table></div>";
     var picker = '<div class="size-pick"><p class="size-label" id="lbl-' + esc(sec.id) + '">Choose a size</p>' +
       '<div class="size-chips" role="radiogroup" aria-labelledby="lbl-' + esc(sec.id) + '">' +
@@ -190,6 +207,7 @@
     var b = e.target.closest(".size-chip");
     if (!b) return;
     sizeSel[b.dataset.sec] = Number(b.dataset.i);
+    sizeSel[b.dataset.sec + ":q"] = state.q;
     var y = window.scrollY;
     render();
     window.scrollTo(0, y);
