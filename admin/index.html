@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=20261117f">
+  <link rel="stylesheet" href="admin.css?v=20261117g">
 </head>
 <body>
 
@@ -42,6 +42,7 @@
       <label class="check"><input id="remember2" type="checkbox" checked> Keep me signed in on this device</label>
       <button class="btn btn-primary" type="submit" id="emailBtn">Sign in</button>
       <p class="error" id="emailError" role="alert" hidden></p>
+      <button type="button" class="linkish" id="forgot" hidden>Forgot password?</button>
     </form>
     <form id="loginForm" autocomplete="off" hidden>
       <label for="token">Access key</label>
@@ -76,6 +77,8 @@
       <button class="btn btn-small" type="button" id="collapseAll">Close all</button>
       <button class="btn btn-small btn-navy" type="button" id="addSectionBtn">+ New section</button>
       <button class="btn btn-small" type="button" id="loginsBtn" hidden>Staff logins</button>
+      <button class="btn btn-small" type="button" id="teamBtn" hidden>Team</button>
+      <button class="btn btn-small" type="button" id="historyBtn" hidden>History</button>
     </div>
     <p class="hint">Price tips: type a number like <code>250</code>, two prices like <code>185 / 380</code>, or leave it empty to show “Ask staff”. In price tables, leave a box empty if that size or type isn't sold.</p>
   </div>
@@ -136,8 +139,42 @@
   </form>
 </dialog>
 
-<script src="../search.js?v=20261117f"></script>
-<script src="../prerender.js?v=20261117f"></script>
-<script src="admin.js?v=20261117f"></script>
+<dialog class="modal" id="teamDialog">
+  <h2>Team</h2>
+  <p class="muted">People who can sign in and edit the menu.</p>
+  <ul class="logins" id="teamList"></ul>
+  <form id="teamForm" autocomplete="off">
+    <h3>Add a person</h3>
+    <label for="tEmail">Their email (e.g. Gmail)</label>
+    <input id="tEmail" type="email" required autocapitalize="off" autocomplete="off">
+    <label for="tRole">What they can do</label>
+    <select id="tRole">
+      <option value="editor">Editor: change the menu</option>
+      <option value="owner">Owner: change the menu and manage the team</option>
+    </select>
+    <label for="tPass">Password for them (at least 8 characters)</label>
+    <input id="tPass" type="password" minlength="8" autocomplete="new-password">
+    <p class="muted small">Give them the password in person or by phone. They can change it later with “Forgot password?” on the sign-in page.</p>
+    <p class="error" id="teamError" role="alert" hidden></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" id="closeTeam">Close</button>
+      <button class="btn btn-primary" type="submit" id="teamAdd">Add person</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="modal" id="historyDialog">
+  <h2>Recent changes</h2>
+  <p class="muted">Load an earlier version to check it, then tap Publish to make it live again.</p>
+  <ul class="logins" id="historyList"></ul>
+  <div class="modal-actions"><button class="btn btn-ghost" type="button" id="closeHistory">Close</button></div>
+</dialog>
+
+<script src="../firebase-config.js?v=20261117g"></script>
+<script src="../menu-data.js?v=20261117g"></script>
+<script src="../menu-format.js?v=20261117g"></script>
+<script src="../search.js?v=20261117g"></script>
+<script src="../prerender.js?v=20261117g"></script>
+<script src="admin.js?v=20261117g"></script>
 </body>
 </html>

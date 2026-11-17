@@ -78,63 +78,9 @@
     if (!Array.isArray(sandbox.MENU)) throw new Error("menu-data.js does not contain window.MENU");
     return sandbox.MENU;
   }
-  var J = function (v) { return JSON.stringify(v); };
-  function jsVal(v) { return Array.isArray(v) ? "[" + v.map(jsVal).join(", ") + "]" : J(v); }
-  // [name, price, diet, description, also-known-as]; trailing empty parts are left out
-  function itemJS(it) {
-    var arr = [it[0], it[1] === undefined ? null : it[1]];
-    if (it[4]) arr.push(it[2] || null, it[3] || null, it[4]);
-    else if (it[3]) arr.push(it[2] || null, it[3]);
-    else if (it[2]) arr.push(it[2]);
-    return "[" + arr.map(jsVal).join(", ") + "]";
-  }
+  // menu-data.js writer lives in ../menu-format.js (shared with the GitHub sync job)
+  var serialize = window.MenuFormat.serialize, itemJS = window.MenuFormat.itemJS;
   function tidy(it) { while (it.length > 2 && (it[it.length - 1] == null || it[it.length - 1] === "")) it.pop(); }
-  var KNOWN = { id: 1, group: 1, title: 1, tagline: 1, note: 1, cols: 1, sizes: 1, defaultSize: 1, items: 1, extra: 1 };
-  function serialize(menu) {
-    var out = [
-      "/*",
-      " * Gautam Hotel, Bardibas-14, Mahottari: menu data.",
-      " * Prices are in Nepali Rupees (Rs.). Edited with the menu admin (/admin/) or by hand.",
-      " *",
-      " * Item format: [name, price, diet, description, also known as]",
-      " *   price: a number, a string such as \"185 / 380\" for two portion/type prices,",
-      " *          an array when the section has `cols` (one price per column),",
-      " *          (sections with `sizes`, e.g. Hard Drinks, take one price per size:",
-      " *           null = not served in that size, \"ask\" = confirm with staff),",
-      " *          or null when the price must be confirmed with staff.",
-      " *   diet:  \"v\" = vegetarian, \"n\" = non-vegetarian, \"b\" = both options available,",
-      " *          omitted for drinks and others where it does not apply.",
-      " */",
-      "window.MENU = ["
-    ];
-    var lastGroup = null;
-    menu.forEach(function (sec, i) {
-      if (sec.group !== lastGroup) {
-        out.push("  /* ───────────── " + (sec.group === "drinks" ? "DRINKS" : "FOOD") + " ───────────── */");
-        lastGroup = sec.group;
-      }
-      out.push("  {");
-      out.push("    id: " + J(sec.id) + ", group: " + J(sec.group) + ", title: " + J(sec.title) + ",");
-      if (sec.tagline) out.push("    tagline: " + J(sec.tagline) + ",");
-      if (sec.note) out.push("    note: " + J(sec.note) + ",");
-      Object.keys(sec).forEach(function (k) { if (!KNOWN[k] && sec[k] !== undefined) out.push("    " + k + ": " + J(sec[k]) + ","); });
-      if (sec.cols) out.push("    cols: " + jsVal(sec.cols) + ",");
-      if (sec.sizes) out.push("    sizes: " + jsVal(sec.sizes) + ",");
-      if (sec.defaultSize !== undefined) out.push("    defaultSize: " + J(sec.defaultSize) + ",");
-      out.push("    items: [");
-      sec.items.forEach(function (it, j) { out.push("      " + itemJS(it) + (j < sec.items.length - 1 ? "," : "")); });
-      out.push("    ]" + (sec.extra && sec.extra.length ? "," : ""));
-      if (sec.extra && sec.extra.length) {
-        out.push("    extra: [");
-        sec.extra.forEach(function (it, j) { out.push("      " + itemJS(it) + (j < sec.extra.length - 1 ? "," : "")); });
-        out.push("    ]");
-      }
-      out.push("  }" + (i < menu.length - 1 ? "," : ""));
-    });
-    out.push("];", "");
-    return out.join("\n");
-  }
-
   /* ───────── prices ───────── */
   // single price box: "" -> null (Ask staff), "250" -> 250, "185/380" -> "185 / 380"
   function readSingle(raw) {
@@ -168,6 +114,12 @@
   }
   function refreshBar() {
     var n = changeCount(), invalid = Object.keys(bad).length;
+    if (FIREBASE && fbSeed && !invalid) {           // first time: the menu is not in Firebase yet
+      $("#publishBar").classList.add("dirty");
+      $("#changeCount").textContent = "Menu not in Firebase yet. Tap Publish once to move it there.";
+      $("#publish").disabled = false; $("#discard").disabled = !n;
+      return;
+    }
     var bar = $("#publishBar");
     bar.classList.toggle("dirty", n > 0);
     $("#changeCount").textContent = invalid ? "Fix the price marked in red" : n ? n + (n === 1 ? " change" : " changes") + " not published" : "No changes";
@@ -520,6 +472,7 @@
   }
 
   function publish() {
+    if (FIREBASE) return fbPublish();
     if (Object.keys(bad).length) { toast("Fix the price marked in red first.", { bad: true }); return; }
     var n = changeCount();
     if (!n) return;
@@ -582,6 +535,7 @@
   }
 
   function signOut() {
+    if (FIREBASE) return fbSignOut();
     if (data && changeCount() && !confirm("You have changes that are not published. Sign out anyway?")) return;
     try { [localStorage, sessionStorage].forEach(function (s) { s.removeItem(KEY_STORE); s.removeItem(KEY_STORE + "-who"); }); } catch (e) {}
     data = null; token = null;
@@ -616,6 +570,215 @@
   });
 
   /* ───────── wire up ───────── */
+  /* ═══════════ Firebase mode ═══════════
+   * Used when ../firebase-config.js sets window.FIREBASE_CONFIG.
+   *   Firebase Authentication (email + password)  -> who can sign in
+   *   Firestore admins/{email} {role}              -> who may edit (enforced by firestore.rules)
+   *   Firestore menu/current {json, version, …}    -> the live menu guests load
+   *   Firestore menuHistory                         -> every published version
+   * A GitHub Action copies menu/current into menu-data.js + index.html for search engines. */
+  var CFG = window.FIREBASE_CONFIG, FIREBASE = !!(CFG && CFG.projectId);
+  var FB = null, fbVersion = 0, fbSeed = false, fbRole = "editor", fbEntering = false;
+  var SDK = "https://www.gstatic.com/firebasejs/10.14.1/";
+
+  function fbInit() {
+    if (FB) return Promise.resolve(FB);
+    return Promise.all([import(SDK + "firebase-app.js"), import(SDK + "firebase-auth.js"), import(SDK + "firebase-firestore.js")])
+      .then(function (m) {
+        var app = m[0].initializeApp(CFG);
+        FB = { App: m[0], A: m[1], F: m[2], app: app, auth: m[1].getAuth(app), db: m[2].getFirestore(app) };
+        var emu = window.__FB_EMULATOR;                        // automated tests only
+        if (emu) { FB.A.connectAuthEmulator(FB.auth, emu.auth, { disableWarnings: true }); FB.F.connectFirestoreEmulator(FB.db, emu.host, emu.port); }
+        return FB;
+      });
+  }
+  function fbMessage(e) {
+    var c = (e && e.code) || "";
+    if (/invalid-credential|wrong-password|user-not-found|invalid-email/.test(c)) return "Wrong email or password.";
+    if (/too-many-requests/.test(c)) return "Too many tries. Wait a few minutes, or use “Forgot password?”.";
+    if (/network-request-failed|unavailable/.test(c)) return "No internet connection. Try again.";
+    if (/operation-not-allowed|configuration-not-found/.test(c)) return "Email/password sign-in is not switched on in Firebase yet (Authentication → Sign-in method).";
+    if (/permission-denied/.test(c)) return "Your account isn't allowed to do that.";
+    return (e && e.message) || "Something went wrong.";
+  }
+  function showLoginError(msg) { $("#emailError").textContent = msg; $("#emailError").hidden = false; }
+
+  function fbStart() {
+    $(".tabs").hidden = true; $("#loginForm").hidden = true; $(".help").hidden = true;
+    $("#emailForm").hidden = false; $("#forgot").hidden = false;
+    $("#forgot").addEventListener("click", fbForgot);
+    $("#teamBtn").addEventListener("click", fbOpenTeam);
+    $("#historyBtn").addEventListener("click", fbOpenHistory);
+    $("#closeTeam").addEventListener("click", function () { $("#teamDialog").close(); });
+    $("#closeHistory").addEventListener("click", function () { $("#historyDialog").close(); });
+    $("#teamForm").addEventListener("submit", function (e) { e.preventDefault(); fbAddPerson(); });
+    $("#teamList").addEventListener("click", function (e) { var b = e.target.closest("[data-remove]"); if (b) fbRemovePerson(b.dataset.remove); });
+    $("#historyList").addEventListener("click", function (e) { var b = e.target.closest("[data-load]"); if (b) fbLoadVersion(b.dataset.load); });
+    $("#who").textContent = "Loading…";
+    fbInit().then(function () {
+      $("#who").textContent = "Not signed in";
+      FB.A.onAuthStateChanged(FB.auth, function (user) { if (user) fbEnter(user); });
+    }).catch(function () { showLoginError("Could not reach Firebase. Check the internet connection and reload."); });
+  }
+
+  function fbSignIn(email, password, remember) {
+    var btn = $("#emailBtn");
+    $("#emailError").hidden = true; btn.disabled = true; btn.textContent = "Signing in…";
+    fbInit().then(function () {
+      return FB.A.setPersistence(FB.auth, remember ? FB.A.browserLocalPersistence : FB.A.browserSessionPersistence);
+    }).then(function () {
+      return FB.A.signInWithEmailAndPassword(FB.auth, normEmail(email), password);
+    }).catch(function (e) { showLoginError(fbMessage(e)); })
+      .then(function () { btn.disabled = false; btn.textContent = "Sign in"; });
+  }
+
+  function fbForgot() {
+    var email = normEmail($("#email").value);
+    if (!email) { showLoginError("Type your email above first, then tap “Forgot password?”."); return; }
+    fbInit().then(function () { return FB.A.sendPasswordResetEmail(FB.auth, email); })
+      .then(function () { toast("If " + email + " has an account, a password-reset email is on its way. Check the spam folder too.", { ms: 8000 }); },
+            function (e) { showLoginError(fbMessage(e)); });
+  }
+
+  function fbEnter(user) {
+    if (fbEntering) return; fbEntering = true;
+    var email = normEmail(user.email), F = FB.F;
+    F.getDoc(F.doc(FB.db, "admins", email)).then(function (snap) {
+      if (!snap.exists()) { var e = new Error("not admin"); e.code = "not-admin"; throw e; }
+      fbRole = snap.data().role === "owner" ? "owner" : "editor";
+      signedInAs = email;
+      return F.getDoc(F.doc(FB.db, "menu", "current"));
+    }).then(function (m) {
+      if (m.exists()) { data = JSON.parse(m.data().json); fbVersion = m.data().version || 0; fbSeed = false; }
+      else { data = clone(window.MENU || []); fbVersion = 0; fbSeed = true; }
+      original = clone(data); originalText = serialize(original);
+      $("#who").textContent = "Signed in as " + email + (fbRole === "owner" ? " · owner" : "");
+      $("#login").hidden = true; $("#editor").hidden = false; $("#publishBar").hidden = false; $("#signOut").hidden = false;
+      $("#teamBtn").hidden = fbRole !== "owner"; $("#historyBtn").hidden = false; $("#loginsBtn").hidden = true;
+      render();
+      if (fbSeed) toast("First time with Firebase: tap Publish once to move the menu there.", { ms: 9000 });
+    }).catch(function (e) {
+      var msg = e.code === "not-admin" || /permission-denied/.test(e.code || "") ?
+        "The account " + email + " isn't on the team yet. Ask the owner to add it." :
+        /failed-precondition|not-found/.test(e.code || "") ? "The Firestore database isn't set up yet (Firebase console → Firestore → Create database)." :
+        fbMessage(e);
+      showLoginError(msg);
+      FB.A.signOut(FB.auth);
+    }).then(function () { fbEntering = false; });
+  }
+
+  function fbPublish() {
+    if (Object.keys(bad).length) { toast("Fix the price marked in red first.", { bad: true }); return; }
+    var n = changeCount();
+    if (!n && !fbSeed) return;
+    var btn = $("#publish"); btn.disabled = true; btn.textContent = "Publishing…";
+    var F = FB.F, ref = F.doc(FB.db, "menu", "current"), json = JSON.stringify(data), next;
+    F.runTransaction(FB.db, function (tx) {
+      return tx.get(ref).then(function (s) {
+        var cur = s.exists() ? (s.data().version || 0) : 0;
+        if (cur !== fbVersion) { var e = new Error("conflict"); e.code = "conflict"; throw e; }
+        next = cur + 1;
+        tx.set(ref, { json: json, version: next, updatedAt: F.serverTimestamp(), updatedBy: signedInAs });
+      });
+    }).then(function () {
+      fbVersion = next; fbSeed = false;
+      original = clone(data); originalText = serialize(data);
+      render(true);
+      toast("Published ✓  Guests see the new menu right away.", { ms: 7000 });
+      return F.addDoc(F.collection(FB.db, "menuHistory"),
+        { json: json, version: next, updatedAt: F.serverTimestamp(), updatedBy: signedInAs, changes: n }).catch(function () {});
+    }).catch(function (e) {
+      if (e.code === "conflict") toast("Someone else published a change since you opened the menu. Reload to get the latest version, then make your change again.",
+        { bad: true, sticky: true, action: "Reload", onAction: function () { location.reload(); } });
+      else toast("Could not publish: " + fbMessage(e), { bad: true, sticky: true });
+    }).then(function () { btn.textContent = "Publish"; refreshBar(); });
+  }
+
+  function fbSignOut() {
+    if (data && changeCount() && !confirm("You have changes that are not published. Sign out anyway?")) return;
+    FB.A.signOut(FB.auth).then(function () { location.reload(); });
+  }
+
+  /* team (owner only) */
+  function fbOpenTeam() {
+    $("#teamError").hidden = true;
+    var d = $("#teamDialog"); if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+    fbRenderTeam();
+  }
+  function fbRenderTeam() {
+    var list = $("#teamList"), F = FB.F;
+    list.innerHTML = "<li><span class='muted'>Loading…</span></li>";
+    F.getDocs(F.collection(FB.db, "admins")).then(function (qs) {
+      var rows = [];
+      qs.forEach(function (d) { rows.push({ email: d.id, role: d.data().role === "owner" ? "owner" : "editor" }); });
+      rows.sort(function (a, b) { return a.role === b.role ? a.email.localeCompare(b.email) : a.role === "owner" ? -1 : 1; });
+      list.innerHTML = rows.map(function (r) {
+        return "<li><span>" + esc(r.email) + '<span class="role">' + r.role + "</span></span>" +
+          (r.email === signedInAs ? "<small>you</small>" :
+           '<button class="btn btn-small" type="button" data-remove="' + esc(r.email) + '" style="color:var(--bad)">Remove</button>') + "</li>";
+      }).join("");
+    }).catch(function (e) { list.innerHTML = "<li><span class='error'>" + esc(fbMessage(e)) + "</span></li>"; });
+  }
+  function fbAddPerson() {
+    var email = normEmail($("#tEmail").value), role = $("#tRole").value, pass = $("#tPass").value;
+    var err = $("#teamError"), btn = $("#teamAdd"), F = FB.F, existed = false;
+    err.hidden = true;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.textContent = "Enter a valid email address."; err.hidden = false; return; }
+    if (pass.length < 8) { err.textContent = "Give them a password of at least 8 characters."; err.hidden = false; return; }
+    btn.disabled = true; btn.textContent = "Adding…";
+    // create their sign-in account in a second Firebase instance so the owner stays signed in
+    var app2 = FB.App.getApps().filter(function (a) { return a.name === "team"; })[0] || FB.App.initializeApp(CFG, "team");
+    var auth2 = FB.A.getAuth(app2);
+    if (window.__FB_EMULATOR && !auth2.emulatorConfig) FB.A.connectAuthEmulator(auth2, window.__FB_EMULATOR.auth, { disableWarnings: true });
+    FB.A.createUserWithEmailAndPassword(auth2, email, pass).then(function () { return FB.A.signOut(auth2); }, function (e) {
+      if (/email-already-in-use/.test(e.code || "")) { existed = true; return; }
+      throw e;
+    }).then(function () {
+      return F.setDoc(F.doc(FB.db, "admins", email), { role: role, addedBy: signedInAs, addedAt: F.serverTimestamp() });
+    }).then(function () {
+      $("#teamForm").reset();
+      toast(existed ? email + " already had an account, so their password is unchanged. They're now on the team as " + role + "."
+                    : email + " can now sign in with the password you set.", { ms: 8000 });
+      fbRenderTeam();
+    }).catch(function (e) {
+      err.textContent = /operation-not-allowed|admin-restricted/.test(e.code || "") ?
+        "Firebase isn't allowing new accounts. In Firebase → Authentication → Settings → User actions, tick “Enable create (sign-up)”, or add the person under Authentication → Users." :
+        /weak-password/.test(e.code || "") ? "That password is too weak. Use at least 8 characters." : fbMessage(e);
+      err.hidden = false;
+    }).then(function () { btn.disabled = false; btn.textContent = "Add person"; });
+  }
+  function fbRemovePerson(email) {
+    if (!confirm("Remove " + email + " from the team? They won't be able to change the menu any more.")) return;
+    FB.F.deleteDoc(FB.F.doc(FB.db, "admins", email)).then(function () { toast(email + " removed."); fbRenderTeam(); },
+      function (e) { toast("Could not remove: " + fbMessage(e), { bad: true }); });
+  }
+
+  /* history */
+  var fbHistory = {};
+  function fbOpenHistory() {
+    var d = $("#historyDialog"), list = $("#historyList"), F = FB.F;
+    if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+    list.innerHTML = "<li><span class='muted'>Loading…</span></li>";
+    F.getDocs(F.query(F.collection(FB.db, "menuHistory"), F.orderBy("updatedAt", "desc"), F.limit(15))).then(function (qs) {
+      fbHistory = {}; var rows = [];
+      qs.forEach(function (doc) {
+        var v = doc.data(); fbHistory[doc.id] = v.json;
+        var when = v.updatedAt && v.updatedAt.toDate ? v.updatedAt.toDate().toLocaleString() : "";
+        rows.push("<li><span>Version " + esc(v.version) + " · " + esc(when) + "<br><small>" + esc(v.updatedBy || "") + " · " +
+          esc(v.changes || 0) + " change(s)</small></span>" + '<button class="btn btn-small" type="button" data-load="' + esc(doc.id) + '">Load</button></li>');
+      });
+      list.innerHTML = rows.join("") || "<li><span class='muted'>No published changes yet.</span></li>";
+    }).catch(function (e) { list.innerHTML = "<li><span class='error'>" + esc(fbMessage(e)) + "</span></li>"; });
+  }
+  function fbLoadVersion(id) {
+    if (!fbHistory[id]) return;
+    if (changeCount() && !confirm("Replace your unpublished changes with this older version?")) return;
+    data = JSON.parse(fbHistory[id]);
+    render(true);
+    $("#historyDialog").close();
+    toast("Older version loaded. Check it, then tap Publish to make it live (or Discard).", { ms: 8000 });
+  }
+
   $("#repoName").textContent = REPO.repo;
   $("#loginForm").addEventListener("submit", function (e) { e.preventDefault(); signIn($("#token").value, $("#remember").checked); });
   $("#signOut").addEventListener("click", signOut);
@@ -642,7 +805,11 @@
       $("#loginForm").hidden = t.dataset.tab !== "key";
     });
   });
-  $("#emailForm").addEventListener("submit", function (e) { e.preventDefault(); emailSignIn($("#email").value, $("#password").value, $("#remember2").checked); });
+  $("#emailForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (FIREBASE) fbSignIn($("#email").value, $("#password").value, $("#remember2").checked);
+    else emailSignIn($("#email").value, $("#password").value, $("#remember2").checked);
+  });
   $("#loginsBtn").addEventListener("click", function () {
     var d = $("#loginsDialog"); $("#addLoginError").hidden = true;
     if (d.showModal) d.showModal(); else d.setAttribute("open", "");
@@ -653,6 +820,7 @@
   $("#loginsList").addEventListener("click", function (e) { var b = e.target.closest("[data-remove]"); if (b) removeLogin(b.dataset.remove); });
 
   var saved = null, savedWho = "";
+  if (FIREBASE) { fbStart(); window.__menuAdmin = { serialize: serialize }; return; }
   try {
     saved = localStorage.getItem(KEY_STORE) || sessionStorage.getItem(KEY_STORE);
     savedWho = localStorage.getItem(KEY_STORE + "-who") || sessionStorage.getItem(KEY_STORE + "-who") || "";

@@ -54,6 +54,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--n
 .tab.is-active { background: var(--navy); color: #fff; }
 #emailForm .btn { width: 100%; margin-top: 16px; }
 .small { font-size: .82rem; }
+.linkish { display: block; margin: 14px auto 0; border: 0; background: none; color: var(--navy); font-weight: 600; text-decoration: underline; padding: 6px; }
+.logins li .role { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; background: #efe7dc; color: var(--muted); border-radius: 999px; padding: 2px 8px; margin-left: 6px; }
 .logins { list-style: none; padding: 0; margin: 10px 0; }
 .logins li { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; }
 .logins li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }

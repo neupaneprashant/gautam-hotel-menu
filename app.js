@@ -289,5 +289,14 @@
     if (history.replaceState) history.replaceState(null, "", "#" + sec.id);
   });
 
+  // live-menu.js calls this when Firebase has newer prices than the copy built into the page
+  window.MenuApp = {
+    setMenu: function (menu) {
+      if (!Array.isArray(menu) || !menu.length) return;
+      MENU = menu; window.MENU = menu;
+      render();
+    }
+  };
+
   render();
 })();
