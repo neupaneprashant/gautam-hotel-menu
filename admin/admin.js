@@ -485,6 +485,24 @@
       function (e) { toast("Could not remove the login: " + e.message, { bad: true }); });
   }
 
+  /* After publishing, also refresh the plain-HTML copy of the menu inside index.html
+     (what Google and other search engines read). Never blocks or undoes the publish. */
+  function refreshSearchCopy(menu, attempt) {
+    if (!window.MenuPrerender) return;
+    attempt = attempt || 1;
+    gh(repoPath + "/contents/index.html?ref=" + encodeURIComponent(branch)).then(function (f) {
+      var page = b64decode(f.content);
+      var base = (page.match(/<link rel="canonical" href="([^"]+)"/) || [])[1] || location.href.replace(/admin\/.*$/, "");
+      var updated = window.MenuPrerender.apply(page, menu, base);
+      if (updated === page) return null;
+      return gh(repoPath + "/contents/index.html", { method: "PUT", body: JSON.stringify({
+        message: "Refresh the search-engine copy of the menu", content: b64encode(updated), sha: f.sha, branch: branch }) });
+    }).catch(function (e) {
+      if ((e.status === 409 || e.status === 422) && attempt < 3) return refreshSearchCopy(menu, attempt + 1);
+      console.warn("Search-engine copy not refreshed:", e.message);   // the live menu is already updated
+    });
+  }
+
   /* ───────── load / publish ───────── */
   function load() {
     $("#who").textContent = "Loading menu…";
@@ -521,6 +539,7 @@
       originalText = text;
       render(true);
       toast("Published ✓  The live menu updates in about a minute.", { ms: 7000 });
+      refreshSearchCopy(clone(data));
     }).catch(function (err) {
       if (err.status === 409 || err.status === 422) {
         toast("Someone else changed the menu since you opened it. Reload to get the latest version, then make your change again.",

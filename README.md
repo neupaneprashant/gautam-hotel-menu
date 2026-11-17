@@ -73,3 +73,15 @@ Hosting is GitHub Pages: Settings → Pages → "Deploy from a branch" → `main
 - `table-card.pdf` / `table-card.png`: a branded A6 table card, ready to print
 
 If the menu is hosted at a different address, regenerate the QR code with `python3 qr/make_qr.py https://your-new-address/`.
+
+## Search engines
+- `index.html` contains a plain-HTML copy of the whole menu plus Google menu data (schema.org `Restaurant` and `Menu`), between the `PRERENDER` markers, so search engines can read every dish and price without running JavaScript. The admin page refreshes this copy on every **Publish**. After editing `menu-data.js` by hand, run `node tools/prerender.js`.
+- Getting found (owner): add the site to Google Search Console, submit `sitemap.xml`, and use the menu link as the **Menu** link on the hotel's Google Business Profile and on gautamhotel.com.np.
+
+## Custom web address (e.g. menu.gautamhotel.com.np)
+1. Whoever manages the gautamhotel.com.np domain adds this DNS record: **CNAME** `menu` → `neupaneprashant.github.io`
+2. In this repository, go to **Settings → Pages → Custom domain**, enter `menu.gautamhotel.com.np`, save, and tick **Enforce HTTPS** once it becomes available.
+3. Update the address in the code: canonical, sitemap and QR code (`python3 qr/make_qr.py https://menu.gautamhotel.com.np/`).
+
+The old github.io link redirects to the new address automatically, so printed QR codes keep working.
+
