@@ -18,6 +18,8 @@
     var q = state.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return t.replace(new RegExp("(" + esc(q) + ")", "ig"), "<mark>$1</mark>");
   }
+  // keep "Non-Veg" together on one line
+  function nb(html) { return html.replace(/Non-/g, "Non&#8209;"); }
   function priceHTML(p) {
     if (p === null || p === undefined) return '<span class="price ask">Ask staff</span>';
     return '<span class="price"><span class="rs">Rs</span>' + esc(p) + "</span>";
@@ -40,7 +42,7 @@
   function listHTML(sec, items) {
     return items.map(function (it) {
       return '<li class="item"><div class="item-row"><span class="item-name">' + dotHTML(it[2]) +
-        "<span>" + hl(it[0]) + '</span></span><span class="leader"></span>' + priceHTML(it[1]) + "</div>" +
+        "<span>" + nb(hl(it[0])) + '</span></span><span class="leader"></span>' + priceHTML(it[1]) + "</div>" +
         (it[3] ? '<p class="desc">' + hl(it[3]) + "</p>" : "") + "</li>";
     }).join("");
   }
@@ -57,7 +59,7 @@
           sec.cols.map(function (c) { return '<th scope="col">' + esc(c) + "</th>"; }).join("") +
           "</tr></thead><tbody>" +
           items.map(function (it) {
-            return '<tr><td><span class="item-name">' + dotHTML(it[2]) + "<span>" + hl(it[0]) + "</span></span></td>" +
+            return '<tr><td><span class="item-name">' + dotHTML(it[2]) + "<span>" + nb(hl(it[0])) + "</span></span></td>" +
               it[1].map(function (p) { return '<td><span class="rs" style="font-size:.72em;color:var(--muted);font-weight:500">Rs</span>' + esc(p) + "</td>"; }).join("") +
               "</tr>";
           }).join("") + "</tbody></table>";
@@ -131,9 +133,62 @@
     });
   });
 
-  var top = $("#toTop");
-  window.addEventListener("scroll", function () { top.classList.toggle("show", window.scrollY > 900); }, { passive: true });
-  top.addEventListener("click", function () { window.scrollTo({ top: 0, behavior: "smooth" }); });
+  /* ── Dynamic toolbar: tuck the search/filter row away while reading down
+        the menu, bring it back on any upward scroll. Category bar stays. ── */
+  var toolbar = $(".toolbar"), top = $("#toTop"), lastY = window.scrollY, ticking = false, jumping = false, idle;
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function measure() {
+    var root = document.documentElement.style;
+    root.setProperty("--row-h", $(".toolbar-row").offsetHeight + "px");
+    root.setProperty("--cats-h", $("#cats").offsetHeight + "px");
+  }
+  measure();
+  window.addEventListener("resize", measure);
+  window.addEventListener("orientationchange", function () { setTimeout(measure, 300); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+
+  function setCompact(on) {
+    if (on && document.activeElement === $("#q")) on = false;   // never hide while typing
+    toolbar.classList.toggle("is-compact", on);
+    document.body.classList.toggle("reading", on);
+  }
+  function onScroll() {
+    var y = window.scrollY, dy = y - lastY;
+    var pinned = toolbar.getBoundingClientRect().top <= 0;
+    if (jumping) {                       // a category jump is in progress: hold compact until it settles
+      clearTimeout(idle);
+      idle = setTimeout(function () { jumping = false; }, 180);
+    } else {
+      if (!pinned || y < 40) setCompact(false);
+      else if (dy > 6) setCompact(true);
+      else if (dy < -6) setCompact(false);
+    }
+    top.classList.toggle("show", y > 900);
+    lastY = y; ticking = false;
+  }
+  window.addEventListener("scroll", function () {
+    if (!ticking) { ticking = true; window.requestAnimationFrame(onScroll); }
+  }, { passive: true });
+  $("#q").addEventListener("focus", function () { setCompact(false); });
+  top.addEventListener("click", function () { window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" }); });
+
+  // Category links: land the section exactly under the (compact) bar on any screen size
+  $("#cats").addEventListener("click", function (e) {
+    var a = e.target.closest(".cat");
+    if (!a) return;
+    var sec = document.getElementById(a.dataset.id);
+    if (!sec) return;
+    e.preventDefault();
+    setCompact(true);
+    jumping = true;                                // keep compact for the whole jump (up or down)
+    clearTimeout(idle);
+    idle = setTimeout(function () { jumping = false; }, 1500);
+    var barH = $("#cats").offsetHeight;
+    var y = sec.getBoundingClientRect().top + window.scrollY - barH - 12;
+    window.scrollTo({ top: y, behavior: reduceMotion ? "auto" : "smooth" });
+    if (history.replaceState) history.replaceState(null, "", "#" + sec.id);
+  });
 
   render();
 })();
