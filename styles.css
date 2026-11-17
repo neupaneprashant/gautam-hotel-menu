@@ -311,6 +311,7 @@ mark { background: #ffe7a3; color: inherit; border-radius: 3px; padding: 0 1px; 
 .footer .dot { margin-right: 4px; }
 .footer .dot.v { color: #4cc26c; }
 .footer .dot.n { color: #ff6b5e; }
+.footer .about { opacity: .85; margin-bottom: 14px; }
 .footer details { margin-top: 12px; font-size: .8rem; opacity: .85; }
 .footer summary { cursor: pointer; margin-bottom: 6px; }
 .copy { text-align: center; font-size: .78rem; opacity: .6; margin: 0; padding: 0 16px 24px; }

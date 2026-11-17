@@ -10,7 +10,7 @@ import sys
 import qrcode
 import qrcode.image.svg
 
-URL = sys.argv[1] if len(sys.argv) > 1 else "https://neupaneprashant.github.io/gautam-hotel-menu/"
+URL = sys.argv[1] if len(sys.argv) > 1 else "https://neupaneprashant.github.io/Gautam-Hotel-Menu/"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=40, border=2)

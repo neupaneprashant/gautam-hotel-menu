@@ -289,5 +289,65 @@
     if (history.replaceState) history.replaceState(null, "", "#" + sec.id);
   });
 
+  /* Google structured data: the whole menu (schema.org Menu), built from menu-data.js
+     so it always matches the prices shown on the page. */
+  function menuSchema() {
+    var base = (document.querySelector('link[rel="canonical"]') || {}).href || location.href.split("#")[0];
+    function offer(price, name) {
+      var n = Number(String(price).replace(/,/g, ""));
+      if (price === null || price === "ask" || isNaN(n)) return null;
+      var o = { "@type": "Offer", price: String(n), priceCurrency: "NPR" };
+      if (name) o.name = name;
+      return o;
+    }
+    function offers(sec, p) {
+      var list = [];
+      if (Array.isArray(p)) {
+        var labels = sec.cols || sec.sizes || [];
+        p.forEach(function (v, i) { var o = offer(v, labels[i]); if (o) list.push(o); });
+      } else if (typeof p === "string" && p.indexOf("/") !== -1) {
+        p.split("/").forEach(function (v) { var o = offer(v.trim()); if (o) list.push(o); });
+      } else {
+        var o = offer(p); if (o) list.push(o);
+      }
+      return list;
+    }
+    // items that need their section name to make sense on their own ("Chicken" -> "Chicken Momo")
+    var suffix = { momo: "Momo", soup: "Soup", pizza: "Pizza", biryani: "Pulau / Biryani" };
+    function item(sec, it) {
+      var name = it[0];
+      if (suffix[sec.id] && name.toLowerCase().indexOf(suffix[sec.id].toLowerCase()) === -1) name += " " + suffix[sec.id];
+      var m = { "@type": "MenuItem", name: name };
+      if (it[3]) m.description = it[3];
+      if (it[2] === "v") m.suitableForDiet = "https://schema.org/VegetarianDiet";
+      var o = offers(sec, it[1]);
+      if (o.length === 1) m.offers = o[0]; else if (o.length) m.offers = o;
+      return m;
+    }
+    return {
+      "@context": "https://schema.org",
+      "@type": "Menu",
+      "@id": base + "#menu",
+      name: "Gautam Hotel Menu",
+      url: base,
+      inLanguage: "en",
+      hasMenuSection: MENU.map(function (sec) {
+        return {
+          "@type": "MenuSection",
+          name: sec.title,
+          description: sec.tagline || undefined,
+          hasMenuItem: sec.items.concat(sec.extra || []).map(function (it) { return item(sec, it); })
+        };
+      })
+    };
+  }
+  try {
+    var ld = document.createElement("script");
+    ld.type = "application/ld+json";
+    ld.id = "ld-menu";
+    ld.textContent = JSON.stringify(menuSchema());
+    document.head.appendChild(ld);
+  } catch (err) { /* structured data is optional; never break the menu */ }
+
   render();
 })();

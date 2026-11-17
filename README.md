@@ -63,7 +63,7 @@ Save the file and reload the page.
 | `favicon-*.png`, `apple-touch-icon.png`, `icon-192.png` | Browser tab and phone home-screen icons |
 
 ## Live site
-Menu link: **https://neupaneprashant.github.io/gautam-hotel-menu/**
+Menu link: **https://neupaneprashant.github.io/Gautam-Hotel-Menu/**
 
 Hosting is GitHub Pages: Settings → Pages → "Deploy from a branch" → `main`, folder `/ (root)`. Every change pushed to `main` goes live within about a minute.
 
