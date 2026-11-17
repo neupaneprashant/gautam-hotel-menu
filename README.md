@@ -32,7 +32,7 @@ Save the file and reload the page.
 | `menu-data.js` | All menu items and prices |
 
 ## Live site
-**https://neupaneprashant.github.io/gautam-hotel-menu/**
+Menu link: **https://neupaneprashant.github.io/gautam-hotel-menu/**
 
 Hosting is GitHub Pages: Settings → Pages → "Deploy from a branch" → `main`, folder `/ (root)`. Every change pushed to `main` goes live within about a minute.
 
