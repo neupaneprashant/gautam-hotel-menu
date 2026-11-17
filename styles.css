@@ -67,15 +67,8 @@ button { font: inherit; cursor: pointer; }
   border: 1px solid var(--gold-soft); color: var(--gold-soft); font-weight: 600;
 }
 .footer .footer-btn:hover { background: var(--gold-soft); color: var(--ink); text-decoration: none; }
-.qr-link {
-  position: absolute; top: 14px; right: 16px; z-index: 2;
-  display: inline-flex; align-items: center; gap: 6px;
-  color: var(--navy); font-size: .85rem; font-weight: 600;
-  padding: 6px 12px 6px 10px; border-radius: 999px;
-  background: #fff; border: 1px solid rgba(0, 43, 132, .25);
-}
-.qr-link:hover { background: rgba(0, 43, 132, .06); }
-.qr-link svg, .footer-btn svg { width: 16px; height: 16px; flex: none; }
+.btn svg, .footer-btn svg { width: 18px; height: 18px; flex: none; }
+.btn-qr { gap: 8px; font: inherit; font-weight: 600; cursor: pointer; }
 .footer button.footer-btn { background: transparent; display: inline-flex; align-items: center; gap: 8px; font: inherit; font-weight: 600; cursor: pointer; }
 
 .qr-dialog {
@@ -371,6 +364,13 @@ mark { background: #ffe7a3; color: inherit; border-radius: 3px; padding: 0 1px; 
   .section { animation: none; }
 }
 @media print {
-  .toolbar, .call-fab, .to-top, .qr-link, .qr-dialog { display: none !important; }
+  .toolbar, .call-fab, .to-top, .btn-qr, .qr-dialog { display: none !important; }
   .section { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+}
+
+/* phones: the four hero buttons as a tidy 2 x 2 grid */
+@media (max-width: 520px) {
+  .hero-actions { display: grid; grid-template-columns: 1fr 1fr; max-width: 360px; margin-left: auto; margin-right: auto; gap: 10px; }
+  .hero-actions .btn { padding: 0 10px; font-size: .95rem; white-space: nowrap; }
+  .hide-sm { display: none; }
 }
