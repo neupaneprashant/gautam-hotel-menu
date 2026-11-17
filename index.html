@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gautam Hotel Menu</title>
+  <meta name="description" content="Digital menu of Gautam Hotel, Bardibas-14, Mahottari, Nepal. Nepali, Indian, Chinese and continental food, coffee, juices and drinks. Serving you since 2002 A.D.">
+  <meta name="theme-color" content="#8f1d24">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%238f1d24'/%3E%3Cpath d='M10 30 32 10l22 20' fill='none' stroke='%23f6d38b' stroke-width='4'/%3E%3Ctext x='32' y='52' font-family='Georgia,serif' font-style='italic' font-size='24' fill='%23fff' text-anchor='middle'%3EGH%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <svg class="logo" viewBox="0 0 120 84" aria-hidden="true">
+      <path d="M6 40 60 6l54 34" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M16 40 60 13l44 27" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".6"/>
+      <text x="60" y="74" text-anchor="middle" font-family="Playfair Display, Georgia, serif" font-style="italic" font-weight="700" font-size="36" fill="#fff">GH</text>
+    </svg>
+    <p class="eyebrow">Bardibas-14, Mahottari</p>
+    <h1>Gautam Hotel</h1>
+    <p class="tagline">A vision to serve from the heart</p>
+    <p class="since">Serving you since 2002&nbsp;A.D.</p>
+    <div class="hero-actions">
+      <a class="btn btn-light" href="#menu">View Menu</a>
+      <a class="btn btn-ghost" href="tel:+9779854027562">Call to Order</a>
+    </div>
+  </div>
+</header>
+
+<nav class="toolbar" id="menu" aria-label="Menu navigation">
+  <div class="toolbar-row">
+    <div class="tabs" role="tablist">
+      <button class="tab is-active" data-group="all" role="tab" aria-selected="true">All</button>
+      <button class="tab" data-group="food" role="tab" aria-selected="false">Food</button>
+      <button class="tab" data-group="drinks" role="tab" aria-selected="false">Drinks</button>
+    </div>
+    <label class="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="q" type="search" placeholder="Search dishes… e.g. momo, paneer, latte" autocomplete="off">
+    </label>
+    <div class="diet" role="group" aria-label="Diet filter">
+      <button class="chip" data-diet="v" aria-pressed="false"><span class="dot v"></span>Veg</button>
+      <button class="chip" data-diet="n" aria-pressed="false"><span class="dot n"></span>Non-veg</button>
+    </div>
+  </div>
+  <div class="cats" id="cats"></div>
+</nav>
+
+<main>
+  <div id="sections"></div>
+  <p class="empty" id="empty" hidden>No dishes match your search. Try another word.</p>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <h2>Gautam Hotel</h2>
+      <p>Bardibas-14, Mahottari, Nepal</p>
+      <p><a href="tel:+97744550034">+977-44550034</a> · <a href="tel:+9779854027562">9854027562</a></p>
+      <p><a href="mailto:gautam.hotel@yahoo.com">gautam.hotel@yahoo.com</a></p>
+      <p><a href="http://www.gautamhotel.com.np" rel="noopener">www.gautamhotel.com.np</a></p>
+    </div>
+    <div class="legend">
+      <p><span class="dot v"></span> Vegetarian &nbsp; <span class="dot n"></span> Non-vegetarian &nbsp; <span class="dot b"></span> Veg &amp; non-veg options</p>
+      <p>All prices are in Nepali Rupees (Rs.). Prices may change; please ask our staff for today's specials.</p>
+    </div>
+  </div>
+  <p class="copy">© Gautam Hotel · Bardibas, Mahottari</p>
+</footer>
+
+<a class="call-fab" href="tel:+9779854027562" aria-label="Call Gautam Hotel">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>
+</a>
+<button class="to-top" id="toTop" aria-label="Back to top">↑</button>
+
+<script src="menu-data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

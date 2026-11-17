@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gautam Hotel Table Card</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --maroon: #8f1d24; --maroon-dark: #5e1016; --gold: #e9b44c; --gold-soft: #f6d38b; }
+  @page { size: A6; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9e2d8; font-family: Inter, sans-serif; display: grid; place-items: center; min-height: 100vh; }
+  .card {
+    width: 105mm; height: 148mm; background: #fbf6ef; position: relative; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,.2);
+  }
+  .top {
+    width: 100%; color: #fff; padding: 8mm 6mm 6mm;
+    background: linear-gradient(160deg, var(--maroon), var(--maroon-dark));
+  }
+  .logo { width: 22mm; color: var(--gold-soft); display: block; margin: 0 auto 1mm; }
+  h1 { font-family: "Playfair Display", serif; font-size: 22pt; margin: 0; line-height: 1; }
+  .tag { font-size: 7.5pt; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-soft); margin: 2mm 0 0; }
+  .scan { font-family: "Playfair Display", serif; font-size: 17pt; color: var(--maroon); margin: 6mm 0 1mm; }
+  .sub { font-size: 8pt; color: #7a6a63; margin: 0 0 4mm; letter-spacing: .04em; }
+  .qr { width: 52mm; height: 52mm; padding: 2.5mm; background: #fff; border: 1.2mm solid var(--maroon); border-radius: 3mm; }
+  .qr img { width: 100%; height: 100%; display: block; }
+  .rule { width: 18mm; height: .5mm; background: linear-gradient(90deg, transparent, var(--gold), transparent); margin: 5mm auto 3mm; }
+  .contact { font-size: 7.5pt; color: #2a1d1a; line-height: 1.6; }
+  .since { font-family: "Playfair Display", serif; font-style: italic; color: var(--maroon); font-size: 8.5pt; margin-top: 2mm; }
+  @media print { body { background: none; display: block; } .card { box-shadow: none; } }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <svg class="logo" viewBox="0 0 120 84" aria-hidden="true">
+        <path d="M6 40 60 6l54 34" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M16 40 60 13l44 27" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".6"/>
+        <text x="60" y="74" text-anchor="middle" font-family="Playfair Display, Georgia, serif" font-style="italic" font-weight="700" font-size="36" fill="#fff">GH</text>
+      </svg>
+      <h1>Gautam Hotel</h1>
+      <p class="tag">A vision to serve from the heart</p>
+    </div>
+    <p class="scan">Scan for our Menu</p>
+    <p class="sub">Point your phone camera at the code</p>
+    <div class="qr"><img src="menu-qr.png" alt="QR code for the Gautam Hotel menu"></div>
+    <div class="rule"></div>
+    <div class="contact">Bardibas-14, Mahottari<br>+977-44550034 · 9854027562</div>
+    <div class="since">Serving you since 2002 A.D.</div>
+  </div>
+</body>
+</html>
