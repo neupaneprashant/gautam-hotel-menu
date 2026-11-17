@@ -14,7 +14,7 @@ It's a static website with no build step or server code. Open `index.html` in a 
 
 ## Updating prices or dishes
 ### Easiest: the admin page
-**Admin page:** https://neupaneprashant.github.io/gautam-hotel-menu/admin/
+**Admin page:** https://neupaneprashant.github.io/Gautam-Hotel-Menu/admin/
 
 **Owner, one-time setup**
 1. Create a GitHub **fine-grained access key** that can access only this repository, with **Repository permissions → Contents: Read and write**. The sign-in page links to the GitHub page and explains each step.
