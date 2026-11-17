@@ -16,7 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=40, border=2)
 qr.add_data(URL)
 qr.make(fit=True)
-img = qr.make_image(fill_color="#5e1016", back_color="white").convert("RGB")
+img = qr.make_image(fill_color="#002b84", back_color="white").convert("RGB")
 img = img.resize((1200, 1200))
 img.save(os.path.join(HERE, "menu-qr.png"))
 

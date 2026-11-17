@@ -21,6 +21,13 @@ Everything lives in **`menu-data.js`**. Each dish is one line:
 ["Veg Sizzler", null, "v"],          // null shows "Ask staff"
 ```
 
+Hard Drinks lists one price per size, in the order 1000 / 750 / 375 / 180 / 90 / 60 / 30 ml:
+
+```js
+["Khukri Rum", [null, 3420, 1710, 860, 450, 310, 160]],  // null = not sold in that size, "ask" = ask staff
+```
+Phones show a size picker; tablets and computers show the full table.
+
 Save the file and reload the page.
 
 ## Files
@@ -30,6 +37,7 @@ Save the file and reload the page.
 | `styles.css` | Design |
 | `app.js` | Search, filters and rendering |
 | `menu-data.js` | All menu items and prices |
+| `logo.svg` / `favicon.svg` | Gautam Hotel logo (vector, traced from the official logo) |
 
 ## Live site
 Menu link: **https://neupaneprashant.github.io/gautam-hotel-menu/**

@@ -3,6 +3,7 @@
 
   var MENU = window.MENU || [];
   var state = { q: "", diet: "all", group: "all" };
+  var sizeSel = {};   // chosen size per sized section (phones)
 
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
@@ -20,9 +21,18 @@
   }
   // keep "Non-Veg" together on one line
   function nb(html) { return html.replace(/Non-/g, "Non&#8209;"); }
+  // 11935 -> "11,935"; also formats numbers inside "1245 / 745"
+  function fmt(p) {
+    return String(p).replace(/\d{4,}/g, function (n) { return Number(n).toLocaleString("en-IN"); });
+  }
   function priceHTML(p) {
-    if (p === null || p === undefined) return '<span class="price ask">Ask staff</span>';
-    return '<span class="price"><span class="rs">Rs</span>' + esc(p) + "</span>";
+    if (p === null || p === undefined || p === "ask") return '<span class="price ask">Ask staff</span>';
+    return '<span class="price"><span class="rs">Rs</span>' + esc(fmt(p)) + "</span>";
+  }
+  function cellHTML(p) {
+    if (p === null || p === undefined) return '<span class="na" title="Not available in this size">—</span>';
+    if (p === "ask") return '<span class="na ask" title="Please ask staff">Ask</span>';
+    return '<span class="rs">Rs</span>' + esc(fmt(p));
   }
   function dotHTML(d) {
     if (!d) return "";
@@ -60,16 +70,42 @@
           "</tr></thead><tbody>" +
           items.map(function (it) {
             return '<tr><td><span class="item-name">' + dotHTML(it[2]) + "<span>" + nb(hl(it[0])) + "</span></span></td>" +
-              it[1].map(function (p) { return '<td><span class="rs" style="font-size:.72em;color:var(--muted);font-weight:500">Rs</span>' + esc(p) + "</td>"; }).join("") +
+              it[1].map(function (p) { return "<td>" + cellHTML(p) + "</td>"; }).join("") +
               "</tr>";
           }).join("") + "</tbody></table>";
       }
       if (extra.length) body += '<ul class="items">' + listHTML(sec, extra) + "</ul>";
       body += "</div>";
+    } else if (sec.sizes) {
+      body = sizedHTML(sec, items);
     } else {
       body = '<ul class="items">' + listHTML(sec, items) + "</ul>";
     }
-    return '<article class="section" id="' + esc(sec.id) + '" data-group="' + sec.group + '">' + top + body + "</article>";
+    if (sec.note) body += '<p class="sec-note">' + esc(sec.note) + "</p>";
+    return '<article class="section' + (sec.sizes ? " wide" : "") + '" id="' + esc(sec.id) + '" data-group="' + sec.group + '">' + top + body + "</article>";
+  }
+
+  /* Hard drinks: full size table on wide screens, size picker + single-price list on phones */
+  function sizedHTML(sec, items) {
+    var sel = sizeSel[sec.id] != null ? sizeSel[sec.id] : (sec.defaultSize || 0);
+    var table = '<div class="size-table-wrap"><table class="ptable size-table"><thead><tr><th scope="col">Drink</th>' +
+      sec.sizes.map(function (s) { return '<th scope="col">' + esc(s) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+      items.map(function (it) {
+        return "<tr><td>" + nb(hl(it[0])) + "</td>" + it[1].map(function (p) { return "<td>" + cellHTML(p) + "</td>"; }).join("") + "</tr>";
+      }).join("") + "</tbody></table></div>";
+    var picker = '<div class="size-pick"><p class="size-label" id="lbl-' + esc(sec.id) + '">Choose a size</p>' +
+      '<div class="size-chips" role="radiogroup" aria-labelledby="lbl-' + esc(sec.id) + '">' +
+      sec.sizes.map(function (s, i) {
+        return '<button type="button" class="size-chip' + (i === sel ? " is-active" : "") + '" role="radio" aria-checked="' + (i === sel) +
+          '" data-sec="' + esc(sec.id) + '" data-i="' + i + '">' + esc(s) + "</button>";
+      }).join("") + "</div>" +
+      '<ul class="items">' + items.map(function (it) {
+        var p = it[1][sel];
+        var price = p === null ? '<span class="price na-price" title="Not available in this size">—</span>' : priceHTML(p);
+        return '<li class="item' + (p === null ? " unavailable" : "") + '"><div class="item-row"><span class="item-name"><span>' + nb(hl(it[0])) +
+          '</span></span><span class="leader"></span>' + price + "</div></li>";
+      }).join("") + "</ul></div>";
+    return '<div class="items-wrap">' + table + picker + "</div>";
   }
 
   var observer;
@@ -91,6 +127,11 @@
     $("#sections").innerHTML = html;
     $("#cats").innerHTML = cats;
     $("#empty").hidden = count > 0;
+    // keep the chosen size chip visible in its scrolling row
+    $$(".size-chips").forEach(function (row) {
+      var on = row.querySelector(".is-active");
+      if (on) row.scrollLeft = on.offsetLeft - row.clientWidth / 2 + on.clientWidth / 2;
+    });
     spy();
   }
 
@@ -117,6 +158,18 @@
     clearTimeout(t);
     t = setTimeout(function () { state.q = e.target.value.trim(); render(); }, 120);
   });
+  // size picker (event delegation survives re-renders)
+  $("#sections").addEventListener("click", function (e) {
+    var b = e.target.closest(".size-chip");
+    if (!b) return;
+    sizeSel[b.dataset.sec] = Number(b.dataset.i);
+    var y = window.scrollY;
+    render();
+    window.scrollTo(0, y);
+    var again = document.querySelector('.size-chip[data-sec="' + b.dataset.sec + '"][data-i="' + b.dataset.i + '"]');
+    if (again) again.focus({ preventScroll: true });
+  });
+
   $$(".tab").forEach(function (b) {
     b.addEventListener("click", function () {
       $$(".tab").forEach(function (x) { x.classList.remove("is-active"); x.setAttribute("aria-selected", "false"); });
@@ -180,6 +233,7 @@
     var sec = document.getElementById(a.dataset.id);
     if (!sec) return;
     e.preventDefault();
+    if (document.activeElement === $("#q")) $("#q").blur();   // close the keyboard so the bar can tuck away
     setCompact(true);
     jumping = true;                                // keep compact for the whole jump (up or down)
     clearTimeout(idle);

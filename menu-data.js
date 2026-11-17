@@ -4,6 +4,8 @@
  *
  * Item format: [name, price, diet, description]
  *   price: a number, a string such as "185 / 380" for two portion/type prices,
+ *          (sections with `sizes`, e.g. Hard Drinks, take one price per size:
+ *           null = not served in that size, "ask" = confirm with staff),
  *          an array when the section has `cols` (one price per column),
  *          or null when the price must be confirmed with staff.
  *   diet:  "v" = vegetarian, "n" = non-vegetarian, "b" = both options available,
@@ -542,6 +544,76 @@ window.MENU = [
       ["Budweiser 330 ml", 500],
       ["Gorkha Premium", 655],
       ["Apple Cider", 325]
+    ]
+  },
+  {
+    id: "hard-drinks", group: "drinks", title: "Hard Drinks",
+    tagline: "Bottle & peg prices · 18+ only",
+    /* one price per size; null = not served in that size, "ask" = confirm with staff */
+    sizes: ["1000 ml", "750 ml", "375 ml", "180 ml", "90 ml", "60 ml", "30 ml"],
+    defaultSize: 5,
+    items: [
+      ["Absolut Vodka",           [11935, 8390, 4225, 2025, "ask", 695, 350]],
+      ["Smirnoff Vodka (Red)",    [11125, 8515, 4290, 2175, "ask", 740, 375]],
+      ["Ruslan Vodka",            [null, 3310, 1655, 835, 425, 295, 150]],
+      ["Ruslan Ultra",            [null, 3730, 1925, 945, 475, 325, 170]],
+      ["8848 Vodka",              [null, 3495, 1750, 900, 455, 305, 185]],
+      ["Signature (Red)",         [5830, 4370, 2190, 1095, 545, 375, 195]],
+      ["Signature (Green)",       [5220, 4095, 1970, 980, 490, 330, 170]],
+      ["Antiquity (Blue)",        [null, 4850, 2485, 1305, 660, 450, 235]],
+      ["Old Durbar (Red)",        [6040, 4675, 2340, 1230, 615, 405, 205]],
+      ["Old Durbar (Black)",      [7770, 6040, 3045, 1555, 780, 530, 250]],
+      ["Jack Daniel's",           [15660, 11810, 5905, 2970, 1490, 1000, 505]],
+      ["Glenfiddich",             [23170, 17405, 8950, 4600, 2360, 1555, 785]],
+      ["The Glenlivet",           [18085, 13675, 6960, 3545, 1780, 1195, 610]],
+      ["Chivas Regal",            [16285, 12180, 6090, 3045, 1555, 990, 500]],
+      ["Johnnie Walker Red Label",          [12770, 9695, 4790, 2425, 1225, 845, 435]],
+      ["Johnnie Walker Black Label",        [14670, 11000, 5505, 2655, 1325, 890, 450]],
+      ["Johnnie Walker Double Black Label", [17995, 13735, 6875, 3435, 1730, 1155, 585]],
+      ["Johnnie Walker Blue Label",         [61530, 52205, null, null, null, null, null]],
+      ["Johnnie Walker Green Label",        [20510, 15850, null, null, null, null, null]],
+      ["Johnnie Walker Gold Label",         [22375, 18025, null, null, null, null, null]],
+      ["VAT 69",                  [10350, 8575, 4290, 2175, 935, 745, 375]],
+      ["Beefeater Gin",           [12555, 9445, 4725, 2425, 1210, 820, 410]],
+      ["Khukri Rum",              [null, 3420, 1710, 860, 450, 310, 160]],
+      ["Bardinet VSOP Brandy",    [12180, 9135, 4600, 2300, 1250, 775, "ask"]],
+      ["100 Pipers",              [11560, 8700, 4475, 2240, 1245, 775, 375]],
+      ["Dimple",                  [18645, null, null, null, null, null, null]],
+      ["Swing",                   [23865, 18335, null, null, null, null, null]],
+      ["Yarsa Gumba",             [null, 20510, 10255, 5135, 2575, 1740, 870]]
+    ]
+  },
+  {
+    id: "mini-items", group: "drinks", title: "Mini Items",
+    tagline: "Small bottles & shots",
+    items: [
+      ["Johnnie Walker Black Label 200 ml", 3665],
+      ["Johnnie Walker Black Label 50 ml", 1055],
+      ["Johnnie Walker Red Label 200 ml", 2675],
+      ["Johnnie Walker Red Label 50 ml", 785],
+      ["Smirnoff Vodka 50 ml", 690],
+      ["Beefeater Gin 50 ml", 745],
+      ["Absolut Vodka 200 ml", 2425],
+      ["Absolut Vodka 500 ml", 6820],
+      ["Chivas Regal 500 ml", 8140],
+      ["Tequila (per shot)", 810]
+    ]
+  },
+  {
+    id: "wine", group: "drinks", title: "Wine",
+    tagline: "Per bottle",
+    note: "Corkage charge: 25% of the menu rate.",
+    items: [
+      ["Jacob's Creek Moscato (Australia)", 3310],
+      ["J.P. Chenet Red / White (French)", 3340],
+      ["Lindeman's", 3315],
+      ["Marques Wine", 2240],
+      ["Rawson's Wine", 3730],
+      ["Miracle Wine", 2985],
+      ["Baron d'Arignac (French)", 3270],
+      ["Don Barroso", 3230],
+      ["Hinwa Wine Red / White", 1430],
+      ["Big Master", 1245]
     ]
   },
   {
