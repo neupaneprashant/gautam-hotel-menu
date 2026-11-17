@@ -37,7 +37,8 @@ Save the file and reload the page.
 | `styles.css` | Design |
 | `app.js` | Search, filters and rendering |
 | `menu-data.js` | All menu items and prices |
-| `logo.svg` / `favicon.svg` | Gautam Hotel logo (vector, traced from the official logo) |
+| `logo.png` / `logo.webp` | Official Gautam Hotel logo |
+| `favicon-*.png`, `apple-touch-icon.png`, `icon-192.png` | Browser tab and phone home-screen icons |
 
 ## Live site
 Menu link: **https://neupaneprashant.github.io/gautam-hotel-menu/**
