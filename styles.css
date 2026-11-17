@@ -49,6 +49,20 @@ button { font: inherit; cursor: pointer; }
   background-size: 18px 18px;
   pointer-events: none;
 }
+.site-link {
+  position: absolute; top: 14px; left: 16px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 4px;
+  color: #fff; text-decoration: none; font-size: .85rem; font-weight: 500;
+  padding: 6px 12px 6px 8px; border-radius: 999px;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25);
+}
+.site-link:hover { background: rgba(255,255,255,.22); }
+.site-link svg { width: 16px; height: 16px; }
+.footer .footer-btn {
+  display: inline-block; margin-top: 6px; padding: 8px 16px; border-radius: 999px;
+  border: 1px solid var(--gold-soft); color: var(--gold-soft); font-weight: 600;
+}
+.footer .footer-btn:hover { background: var(--gold-soft); color: var(--ink); text-decoration: none; }
 .hero-inner { position: relative; max-width: 720px; margin: 0 auto; }
 .logo { width: 110px; color: var(--gold-soft); margin: 0 auto 8px; }
 .eyebrow {
