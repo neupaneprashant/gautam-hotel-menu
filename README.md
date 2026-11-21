@@ -23,7 +23,7 @@ Staff sign in with their **email (e.g. Gmail) and password**, change prices or d
 - **History:** every publish is saved in `menuHistory`. Use **History** to load an older version, then Publish it.
 - **Forgot password?** on the sign-in page sends a reset email.
 - **Search engines:** the GitHub Action *Sync menu from Firebase* copies the live menu into `menu-data.js` and `index.html` about every 30 minutes, so Google sees current prices.
-- **Firebase project:** `gautam-hotel-admin`, configured in `firebase-config.js` (the values there are public by design). Set `window.FIREBASE_CONFIG = null` to switch back to the GitHub-key admin.
+- **Firebase project:** `gautam-hotel-admin`, configured in `firebase-config.js` (the values there are public by design).
 
 ### By hand
 Everything lives in **`menu-data.js`**. Each dish is one line:

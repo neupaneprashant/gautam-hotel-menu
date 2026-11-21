@@ -1,32 +1,18 @@
 /*
  * Gautam Hotel: menu admin.
- * Reads menu-data.js from GitHub, lets staff edit it in a form, and saves it
- * back with the GitHub API. GitHub Pages then republishes the menu (about 1 minute).
- * No server: each editor signs in with a fine-grained GitHub access key that can
- * only read/write this repository's contents.
+ * Staff sign in with Firebase Authentication (email + password), edit the menu in a
+ * form and Publish it to Firestore (menu/current); guests see the change right away.
+ * Who may edit is decided by Firestore admins/{email} and enforced by firestore.rules.
+ * A GitHub Action copies the published menu into menu-data.js + index.html for search engines.
  */
 (function () {
   "use strict";
 
-  var FILE = "menu-data.js";
-  var REPO = detectRepo();
-  var API = "https://api.github.com";
-  var KEY_STORE = "gautam-menu-admin-key";
-
-  var token = null, branch = "main", sha = null, user = "";
   var data = null, original = null, originalText = "";
   var bad = {};                       // input id -> true while its value is invalid
 
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
-
-  function detectRepo() {
-    var parts = location.pathname.split("/").filter(Boolean);
-    if (/\.github\.io$/i.test(location.hostname) && parts.length) {
-      return { owner: location.hostname.split(".")[0], repo: parts[0] };
-    }
-    return { owner: "neupaneprashant", repo: "gautam-hotel-menu" };   // when opened outside GitHub Pages
-  }
 
   /* ───────── helpers ───────── */
   function esc(s) {
@@ -44,39 +30,6 @@
     if (opts.action) t.querySelector("button").onclick = function () { t.hidden = true; opts.onAction(); };
     clearTimeout(toast.timer);
     if (!opts.sticky) toast.timer = setTimeout(function () { t.hidden = true; }, opts.ms || 4000);
-  }
-  function b64encode(str) {
-    var bytes = new TextEncoder().encode(str), bin = "";
-    for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-    return btoa(bin);
-  }
-  function b64decode(b64) {
-    var bin = atob(b64.replace(/\s/g, "")), bytes = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new TextDecoder().decode(bytes);
-  }
-
-  /* ───────── GitHub API ───────── */
-  function gh(path, opts) {
-    opts = opts || {};
-    var headers = { Accept: "application/vnd.github+json", Authorization: "Bearer " + token, "X-GitHub-Api-Version": "2022-11-28" };
-    if (opts.body) headers["Content-Type"] = "application/json";
-    return fetch(API + path, { method: opts.method || "GET", headers: headers, body: opts.body, cache: "no-store" })
-      .then(function (r) {
-        return r.json().catch(function () { return {}; }).then(function (body) {
-          if (!r.ok) { var e = new Error(body.message || ("GitHub error " + r.status)); e.status = r.status; throw e; }
-          return body;
-        });
-      });
-  }
-  var repoPath = "/repos/" + encodeURIComponent(REPO.owner) + "/" + encodeURIComponent(REPO.repo);
-
-  /* ───────── menu-data.js read / write ───────── */
-  function parseMenu(text) {
-    var sandbox = {};
-    new Function("window", text)(sandbox);          // the file is plain data: window.MENU = [...]
-    if (!Array.isArray(sandbox.MENU)) throw new Error("menu-data.js does not contain window.MENU");
-    return sandbox.MENU;
   }
   // menu-data.js writer lives in ../menu-format.js (shared with the GitHub sync job)
   var serialize = window.MenuFormat.serialize, itemJS = window.MenuFormat.itemJS;
@@ -114,7 +67,7 @@
   }
   function refreshBar() {
     var n = changeCount(), invalid = Object.keys(bad).length;
-    if (FIREBASE && fbSeed && !invalid) {           // first time: the menu is not in Firebase yet
+    if (fbSeed && !invalid) {           // first time: the menu is not in Firebase yet
       $("#publishBar").classList.add("dirty");
       $("#changeCount").textContent = "Menu not in Firebase yet. Tap Publish once to move it there.";
       $("#publish").disabled = false; $("#discard").disabled = !n;
@@ -334,226 +287,8 @@
     });
   }
 
-  /* ───────── email + password logins ─────────
-   * admin/accounts.json holds, for each staff email, a copy of the owner's
-   * GitHub key locked with that person's password (PBKDF2-SHA256, 600,000
-   * rounds -> AES-256-GCM). The password itself is never stored anywhere.
-   * Signing in unlocks the key on the person's own device. */
-  var ACCOUNTS = "admin/accounts.json", ITER = 600000;
   var signedInAs = "";
-  function bytesToB64(u8) { var s = ""; for (var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]); return btoa(s); }
-  function b64ToBytes(b) { var s = atob(b), u = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
   function normEmail(e) { return String(e || "").trim().toLowerCase(); }
-  function deriveKey(password, salt, iter) {
-    return crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]).then(function (base) {
-      return crypto.subtle.deriveKey({ name: "PBKDF2", salt: salt, iterations: iter, hash: "SHA-256" },
-        base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-    });
-  }
-  function lockKey(email, password, secret) {
-    var salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
-    return deriveKey(password, salt, ITER).then(function (k) {
-      return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv, additionalData: new TextEncoder().encode(normEmail(email)) }, k, new TextEncoder().encode(secret));
-    }).then(function (ct) {
-      return { email: normEmail(email), kdf: "PBKDF2-SHA256", iter: ITER, salt: bytesToB64(salt), iv: bytesToB64(iv),
-               data: bytesToB64(new Uint8Array(ct)), added: new Date().toISOString().slice(0, 10) };
-    });
-  }
-  function unlockKey(acc, password) {
-    return deriveKey(password, b64ToBytes(acc.salt), acc.iter || ITER).then(function (k) {
-      return crypto.subtle.decrypt({ name: "AES-GCM", iv: b64ToBytes(acc.iv), additionalData: new TextEncoder().encode(acc.email) }, k, b64ToBytes(acc.data));
-    }).then(function (pt) { return new TextDecoder().decode(pt); });
-  }
-  // public copy of the logins file (served next to this page)
-  function fetchAccounts() {
-    return fetch("accounts.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) {
-      if (r.status === 404) return { accounts: [] };
-      if (!r.ok) throw new Error("Could not load logins (" + r.status + ")");
-      return r.json();
-    });
-  }
-  // the logins file through the GitHub API (to change it)
-  function readAccountsFile() {
-    return gh(repoPath + "/contents/" + ACCOUNTS + "?ref=" + encodeURIComponent(branch)).then(function (f) {
-      return { sha: f.sha, json: JSON.parse(b64decode(f.content)) };
-    }, function (e) { if (e.status === 404) return { sha: null, json: { accounts: [] } }; throw e; });
-  }
-  function writeAccountsFile(json, fileSha, message) {
-    var body = { message: message, content: b64encode(JSON.stringify(json, null, 2) + "\n"), branch: branch };
-    if (fileSha) body.sha = fileSha;
-    return gh(repoPath + "/contents/" + ACCOUNTS, { method: "PUT", body: JSON.stringify(body) });
-  }
-
-  function emailSignIn(email, password, remember) {
-    var err = $("#emailError"), btn = $("#emailBtn");
-    err.hidden = true; btn.disabled = true; btn.textContent = "Checking…";
-    if (!(window.crypto && crypto.subtle)) {
-      err.textContent = "This browser can't sign in securely. Please update it, or open the page over https."; err.hidden = false;
-      btn.disabled = false; btn.textContent = "Sign in"; return Promise.resolve();
-    }
-    return fetchAccounts().then(function (file) {
-      var acc = (file.accounts || []).filter(function (a) { return a.email === normEmail(email); })[0];
-      if (!acc) throw { login: true };
-      return unlockKey(acc, password).catch(function () { throw { login: true }; });
-    }).then(function (key) {
-      signedInAs = normEmail(email);
-      return signIn(key, remember, true);
-    }).catch(function (e) {
-      err.textContent = e && e.login ? "Wrong email or password." : (e && e.message) || "Could not sign in.";
-      err.hidden = false;
-    }).then(function () { btn.disabled = false; btn.textContent = "Sign in"; });
-  }
-
-  function renderLogins() {
-    var list = $("#loginsList");
-    list.innerHTML = "<li><span class='muted'>Loading…</span></li>";
-    return readAccountsFile().then(function (f) {
-      var accs = f.json.accounts || [];
-      list.innerHTML = accs.length ? accs.map(function (a) {
-        return "<li><span>" + esc(a.email) + "<br><small>added " + esc(a.added || "") + "</small></span>" +
-          '<button class="btn btn-small" type="button" data-remove="' + esc(a.email) + '" style="color:var(--bad)">Remove</button></li>';
-      }).join("") : "<li><span class='muted'>No staff logins yet.</span></li>";
-    }).catch(function (e) { list.innerHTML = "<li><span class='error'>" + esc(e.message) + "</span></li>"; });
-  }
-  function addLogin(email, pass, pass2) {
-    var err = $("#addLoginError"), btn = $("#addLoginBtn");
-    err.hidden = true;
-    email = normEmail(email);
-    var problem = !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? "Enter a valid email address." :
-      pass.length < 12 ? "The password must be at least 12 characters." :
-      pass !== pass2 ? "The two passwords don't match." :
-      pass.toLowerCase().indexOf(email.split("@")[0]) !== -1 ? "Don't use the email name inside the password." : "";
-    if (problem) { err.textContent = problem; err.hidden = false; return; }
-    btn.disabled = true; btn.textContent = "Saving…";
-    readAccountsFile().then(function (f) {
-      return lockKey(email, pass, token).then(function (acc) {
-        var accs = (f.json.accounts || []).filter(function (a) { return a.email !== email; });
-        accs.push(acc);
-        return writeAccountsFile({ note: "Staff logins for the menu admin. Each entry is the menu key locked with that person's password; passwords are not stored.", accounts: accs },
-          f.sha, "Menu admin: add login for " + email);
-      });
-    }).then(function () {
-      $("#addLoginForm").reset();
-      toast("Login added for " + email + ". It works in about a minute.", { ms: 6000 });
-      renderLogins();
-    }).catch(function (e) {
-      err.textContent = e.status === 403 || e.status === 404 ? "This key can't save the logins file. It needs Contents: Read and write." : "Could not add the login: " + e.message;
-      err.hidden = false;
-    }).then(function () { btn.disabled = false; btn.textContent = "Add login"; });
-  }
-  function removeLogin(email) {
-    if (!confirm("Remove the login for " + email + "? They will no longer be able to sign in.")) return;
-    readAccountsFile().then(function (f) {
-      var accs = (f.json.accounts || []).filter(function (a) { return a.email !== email; });
-      return writeAccountsFile({ note: f.json.note, accounts: accs }, f.sha, "Menu admin: remove login for " + email);
-    }).then(function () { toast("Login removed for " + email + "."); renderLogins(); },
-      function (e) { toast("Could not remove the login: " + e.message, { bad: true }); });
-  }
-
-  /* After publishing, also refresh the plain-HTML copy of the menu inside index.html
-     (what Google and other search engines read). Never blocks or undoes the publish. */
-  function refreshSearchCopy(menu, attempt) {
-    if (!window.MenuPrerender) return;
-    attempt = attempt || 1;
-    gh(repoPath + "/contents/index.html?ref=" + encodeURIComponent(branch)).then(function (f) {
-      var page = b64decode(f.content);
-      var base = (page.match(/<link rel="canonical" href="([^"]+)"/) || [])[1] || location.href.replace(/admin\/.*$/, "");
-      var updated = window.MenuPrerender.apply(page, menu, base);
-      if (updated === page) return null;
-      return gh(repoPath + "/contents/index.html", { method: "PUT", body: JSON.stringify({
-        message: "Refresh the search-engine copy of the menu", content: b64encode(updated), sha: f.sha, branch: branch }) });
-    }).catch(function (e) {
-      if ((e.status === 409 || e.status === 422) && attempt < 3) return refreshSearchCopy(menu, attempt + 1);
-      console.warn("Search-engine copy not refreshed:", e.message);   // the live menu is already updated
-    });
-  }
-
-  /* ───────── load / publish ───────── */
-  function load() {
-    $("#who").textContent = "Loading menu…";
-    return gh(repoPath + "/contents/" + FILE + "?ref=" + encodeURIComponent(branch)).then(function (f) {
-      sha = f.sha;
-      var text = b64decode(f.content);
-      data = parseMenu(text);
-      original = clone(data);
-      originalText = serialize(original);
-      $("#who").textContent = signedInAs ? "Signed in as " + signedInAs : (user ? "@" + user + " · " : "") + REPO.owner + "/" + REPO.repo;
-      $("#loginsBtn").hidden = !!signedInAs;   // only the key holder manages logins
-      $("#login").hidden = true; $("#editor").hidden = false; $("#publishBar").hidden = false; $("#signOut").hidden = false;
-      render();
-    });
-  }
-
-  function publish() {
-    if (FIREBASE) return fbPublish();
-    if (Object.keys(bad).length) { toast("Fix the price marked in red first.", { bad: true }); return; }
-    var n = changeCount();
-    if (!n) return;
-    var btn = $("#publish");
-    btn.disabled = true; btn.textContent = "Publishing…";
-    var text = serialize(data);
-    try { parseMenu(text); } catch (err) { toast("Could not prepare the menu file: " + err.message, { bad: true }); btn.textContent = "Publish"; refreshBar(); return; }
-    gh(repoPath + "/contents/" + FILE, {
-      method: "PUT",
-      body: JSON.stringify({
-        message: "Update menu (" + n + (n === 1 ? " change" : " changes") + ") from the admin page",
-        content: b64encode(text), sha: sha, branch: branch
-      })
-    }).then(function (res) {
-      sha = res.content.sha;
-      original = clone(data);
-      originalText = text;
-      render(true);
-      toast("Published ✓  The live menu updates in about a minute.", { ms: 7000 });
-      refreshSearchCopy(clone(data));
-    }).catch(function (err) {
-      if (err.status === 409 || err.status === 422) {
-        toast("Someone else changed the menu since you opened it. Reload to get the latest version, then make your change again.",
-          { bad: true, sticky: true, action: "Reload", onAction: function () { location.reload(); } });
-      } else if (err.status === 401) {
-        toast("Your access key has expired or was removed. Sign in again.", { bad: true, sticky: true, action: "Sign in", onAction: signOut });
-      } else if (err.status === 403 || err.status === 404) {
-        toast("This access key can't save changes. It needs “Contents: Read and write” for " + REPO.repo + ".", { bad: true, sticky: true });
-      } else {
-        toast("Could not publish: " + err.message + ". Check your internet connection and try again.", { bad: true, sticky: true });
-      }
-    }).then(function () { btn.textContent = "Publish"; refreshBar(); });
-  }
-
-  function signIn(key, remember, viaEmail) {
-    token = key.trim();
-    var err = $("#loginError");
-    err.hidden = true;
-    $("#loginBtn").disabled = true; $("#loginBtn").textContent = "Signing in…";
-    return gh(repoPath).then(function (repo) {
-      branch = repo.default_branch || "main";
-      try {
-        (remember ? localStorage : sessionStorage).setItem(KEY_STORE, token);
-        (remember ? localStorage : sessionStorage).setItem(KEY_STORE + "-who", viaEmail ? signedInAs : "");
-      } catch (e) {}
-      return gh("/user").then(function (u) { user = u.login; }, function () {});
-    }).then(load).catch(function (e) {
-      token = null;
-      if (viaEmail) {                      // a stored login whose key no longer works
-        $("#emailError").textContent = e.status === 401 ? "This login has been switched off. Ask the owner for a new one." : "Could not sign in: " + e.message;
-        $("#emailError").hidden = false;
-      }
-      try { localStorage.removeItem(KEY_STORE); sessionStorage.removeItem(KEY_STORE); } catch (x) {}
-      err.textContent = e.status === 401 ? "That access key isn't valid. Check you copied all of it." :
-        e.status === 404 || e.status === 403 ? "This key can't open the menu repository (" + REPO.owner + "/" + REPO.repo + "). Give it access to that repository." :
-        "Could not sign in: " + e.message;
-      err.hidden = false;
-      $("#login").hidden = false; $("#editor").hidden = true; $("#publishBar").hidden = true;
-    }).then(function () { $("#loginBtn").disabled = false; $("#loginBtn").textContent = "Sign in"; });
-  }
-
-  function signOut() {
-    if (FIREBASE) return fbSignOut();
-    if (data && changeCount() && !confirm("You have changes that are not published. Sign out anyway?")) return;
-    try { [localStorage, sessionStorage].forEach(function (s) { s.removeItem(KEY_STORE); s.removeItem(KEY_STORE + "-who"); }); } catch (e) {}
-    data = null; token = null;
-    location.reload();
-  }
 
   /* ───────── new section dialog ───────── */
   function openNewSection() {
@@ -582,9 +317,7 @@
     toast("Section added. Now add dishes to it, then Publish.");
   });
 
-  /* ───────── wire up ───────── */
-  /* ═══════════ Firebase mode ═══════════
-   * Used when ../firebase-config.js sets window.FIREBASE_CONFIG.
+  /* ═══════════ Firebase ═══════════
    *   Firebase Authentication (email + password)  -> who can sign in
    *   Firestore admins/{email} {role}              -> who may edit (enforced by firestore.rules)
    *   Firestore menu/current {json, version, …}    -> the live menu guests load
@@ -629,8 +362,6 @@
   $("#loadingReload").addEventListener("click", function () { location.reload(); });
 
   function fbStart() {
-    $(".tabs").hidden = true; $("#loginForm").hidden = true; $(".help").hidden = true;
-    $("#emailForm").hidden = false; $("#forgot").hidden = false;
     $("#forgot").addEventListener("click", fbForgot);
     $("#teamBtn").addEventListener("click", fbOpenTeam);
     $("#historyBtn").addEventListener("click", fbOpenHistory);
@@ -686,7 +417,7 @@
       original = clone(data); originalText = serialize(original);
       $("#who").textContent = "Signed in as " + email + (fbRole === "owner" ? " · owner" : "");
       $("#login").hidden = true; $("#editor").hidden = false; $("#publishBar").hidden = false; $("#signOut").hidden = false;
-      $("#teamBtn").hidden = fbRole !== "owner"; $("#historyBtn").hidden = false; $("#loginsBtn").hidden = true;
+      $("#teamBtn").hidden = fbRole !== "owner"; $("#historyBtn").hidden = false;
       render();
       busy(false);
       if (fbSeed) toast("First time with Firebase: tap Publish once to move the menu there.", { ms: 9000 });
@@ -813,9 +544,8 @@
     toast("Older version loaded. Check it, then tap Publish to make it live (or Discard).", { ms: 8000 });
   }
 
-  $("#repoName").textContent = REPO.repo;
-  $("#loginForm").addEventListener("submit", function (e) { e.preventDefault(); signIn($("#token").value, $("#remember").checked); });
-  $("#signOut").addEventListener("click", signOut);
+  /* ───────── wire up ───────── */
+  $("#signOut").addEventListener("click", fbSignOut);
   $("#sections").addEventListener("input", onInput);
   $("#sections").addEventListener("change", onInput);
   $("#sections").addEventListener("click", onClick);
@@ -823,7 +553,7 @@
   $("#expandAll").addEventListener("click", function () { $$(".sec").forEach(function (d) { if (!d.classList.contains("filtered-out")) d.open = true; }); });
   $("#collapseAll").addEventListener("click", function () { $$(".sec").forEach(function (d) { d.open = false; }); });
   $("#addSectionBtn").addEventListener("click", openNewSection);
-  $("#publish").addEventListener("click", publish);
+  $("#publish").addEventListener("click", fbPublish);
   $("#discard").addEventListener("click", function () {
     if (!confirm("Throw away all changes that are not published?")) return;
     data = clone(original); render(true); toast("Changes discarded.");
@@ -832,50 +562,14 @@
     if (data && original && changeCount()) { e.preventDefault(); e.returnValue = ""; }
   });
 
-  $$(".tab").forEach(function (t) {
-    t.addEventListener("click", function () {
-      $$(".tab").forEach(function (x) { x.classList.toggle("is-active", x === t); x.setAttribute("aria-selected", x === t); });
-      $("#emailForm").hidden = t.dataset.tab !== "email";
-      $("#loginForm").hidden = t.dataset.tab !== "key";
-    });
-  });
   $("#emailForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    if (FIREBASE) fbSignIn($("#email").value, $("#password").value, $("#remember2").checked);
-    else emailSignIn($("#email").value, $("#password").value, $("#remember2").checked);
+    fbSignIn($("#email").value, $("#password").value, $("#remember2").checked);
   });
-  $("#loginsBtn").addEventListener("click", function () {
-    var d = $("#loginsDialog"); $("#addLoginError").hidden = true;
-    if (d.showModal) d.showModal(); else d.setAttribute("open", "");
-    renderLogins();
-  });
-  $("#closeLogins").addEventListener("click", function () { $("#loginsDialog").close(); });
-  $("#addLoginForm").addEventListener("submit", function (e) { e.preventDefault(); addLogin($("#newEmail").value, $("#newPass").value, $("#newPass2").value); });
-  $("#loginsList").addEventListener("click", function (e) { var b = e.target.closest("[data-remove]"); if (b) removeLogin(b.dataset.remove); });
 
-  var saved = null, savedWho = "";
-  if (FIREBASE) { fbStart(); window.__menuAdmin = { serialize: serialize }; return; }
-  try {
-    saved = localStorage.getItem(KEY_STORE) || sessionStorage.getItem(KEY_STORE);
-    savedWho = localStorage.getItem(KEY_STORE + "-who") || sessionStorage.getItem(KEY_STORE + "-who") || "";
-  } catch (e) {}
-  if (saved && savedWho) {
-    // a remembered staff login: make sure the owner hasn't removed it since
-    fetchAccounts().then(function (file) {
-      var still = (file.accounts || []).some(function (a) { return a.email === savedWho; });
-      if (!still) {
-        try { [localStorage, sessionStorage].forEach(function (s) { s.removeItem(KEY_STORE); s.removeItem(KEY_STORE + "-who"); }); } catch (e) {}
-        $("#emailError").textContent = "Your login was removed by the owner.";
-        $("#emailError").hidden = false;
-        return;
-      }
-      signedInAs = savedWho;
-      signIn(saved, !!localStorage.getItem(KEY_STORE), true);
-    }, function () { signedInAs = savedWho; signIn(saved, !!localStorage.getItem(KEY_STORE), true); });
-  } else if (saved) {
-    signIn(saved, !!localStorage.getItem(KEY_STORE), false);
-  }
+  if (FIREBASE) fbStart();
+  else showLoginError("Firebase is switched off in firebase-config.js, so the menu can't be edited here.");
 
   // exposed for automated tests only
-  window.__menuAdmin = { serialize: serialize, parseMenu: parseMenu, readSingle: readSingle, readCell: readCell, lockKey: lockKey, unlockKey: unlockKey };
+  window.__menuAdmin = { serialize: serialize, readSingle: readSingle, readCell: readCell };
 })();
