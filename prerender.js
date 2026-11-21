@@ -98,6 +98,8 @@
       var name = it[0];
       if (SUFFIX[sec.id] && name.toLowerCase().indexOf(SUFFIX[sec.id].toLowerCase()) === -1) name += " " + SUFFIX[sec.id];
       var m = { "@type": "MenuItem", name: name };
+      var NE = root.MENU_NE, ne = NE && NE.name(sec, it);
+      if (ne) m.alternateName = ne;
       if (it[3]) m.description = it[3];
       if (it[2] === "v") m.suitableForDiet = "https://schema.org/VegetarianDiet";
       var o = offers(sec, it[1]);
@@ -108,9 +110,11 @@
       "@context": "https://schema.org", "@type": "Menu", "@id": base + "#menu",
       name: "Gautam Hotel Menu", url: base, inLanguage: "en",
       hasMenuSection: MENU.map(function (sec) {
+        var NEs = root.MENU_NE && root.MENU_NE.section(sec).title;
         var s = { "@type": "MenuSection", name: sec.title,
                   hasMenuItem: sec.items.concat(sec.extra || []).map(function (it) { return item(sec, it); }) };
         if (sec.tagline) s.description = sec.tagline;
+        if (NEs) s.alternateName = NEs;
         return s;
       })
     };

@@ -6,22 +6,21 @@
   "use strict";
   var J = function (v) { return JSON.stringify(v); };
   function jsVal(v) { return Array.isArray(v) ? "[" + v.map(jsVal).join(", ") + "]" : J(v); }
-  // [name, price, diet, description, also-known-as]; trailing empty parts are left out
+  // [name, price, diet, description, also known as, nepali name, nepali description]; trailing empty parts are left out
   function itemJS(it) {
-    var arr = [it[0], it[1] === undefined ? null : it[1]];
-    if (it[4]) arr.push(it[2] || null, it[3] || null, it[4]);
-    else if (it[3]) arr.push(it[2] || null, it[3]);
-    else if (it[2]) arr.push(it[2]);
+    var arr = [it[0], it[1] === undefined ? null : it[1]], last = it.length - 1;
+    while (last > 1 && (it[last] == null || it[last] === "")) last--;
+    for (var i = 2; i <= last; i++) arr.push(it[i] == null || it[i] === "" ? null : it[i]);
     return "[" + arr.map(jsVal).join(", ") + "]";
   }
-  var KNOWN = { id: 1, group: 1, title: 1, tagline: 1, note: 1, cols: 1, sizes: 1, defaultSize: 1, items: 1, extra: 1 };
+  var KNOWN = { id: 1, group: 1, title: 1, tagline: 1, note: 1, title_ne: 1, tagline_ne: 1, cols: 1, sizes: 1, defaultSize: 1, items: 1, extra: 1 };
   function serialize(menu) {
     var out = [
       "/*",
       " * Gautam Hotel, Bardibas-14, Mahottari: menu data.",
       " * Prices are in Nepali Rupees (Rs.). Edited with the menu admin (/admin/) or by hand.",
       " *",
-      " * Item format: [name, price, diet, description, also known as]",
+      " * Item format: [name, price, diet, description, also known as, nepali name]",
       " *   price: a number, a string such as \"185 / 380\" for two portion/type prices,",
       " *          an array when the section has `cols` (one price per column),",
       " *          (sections with `sizes`, e.g. Hard Drinks, take one price per size:",
@@ -42,6 +41,8 @@
       out.push("    id: " + J(sec.id) + ", group: " + J(sec.group) + ", title: " + J(sec.title) + ",");
       if (sec.tagline) out.push("    tagline: " + J(sec.tagline) + ",");
       if (sec.note) out.push("    note: " + J(sec.note) + ",");
+      if (sec.title_ne) out.push("    title_ne: " + J(sec.title_ne) + ",");
+      if (sec.tagline_ne) out.push("    tagline_ne: " + J(sec.tagline_ne) + ",");
       Object.keys(sec).forEach(function (k) { if (!KNOWN[k] && sec[k] !== undefined) out.push("    " + k + ": " + J(sec[k]) + ","); });
       if (sec.cols) out.push("    cols: " + jsVal(sec.cols) + ",");
       if (sec.sizes) out.push("    sizes: " + jsVal(sec.sizes) + ",");

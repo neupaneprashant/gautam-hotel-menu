@@ -103,6 +103,20 @@ button { font: inherit; cursor: pointer; }
 .hero-inner { position: relative; max-width: 720px; margin: 0 auto; }
 .logo { width: min(380px, 86vw); height: auto; margin: 4px auto 14px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* English / नेपाली switch */
+.lang-switch { display: inline-flex; background: #fff; border: 1px solid rgba(0, 43, 132, .25); border-radius: 999px; padding: 3px; gap: 2px; }
+.lang-switch button { border: 0; background: transparent; color: var(--navy); font: inherit; font-size: .82rem; font-weight: 600; padding: 5px 11px; border-radius: 999px; min-height: 30px; }
+.lang-switch button.is-active { background: var(--navy); color: #fff; }
+.lang-top { position: absolute; top: 14px; right: 16px; z-index: 2; }
+.footer .lang-switch { margin-bottom: 14px; background: transparent; border-color: rgba(246, 211, 139, .5); }
+.footer .lang-switch button { color: var(--gold-soft); }
+.footer .lang-switch button.is-active { background: var(--gold-soft); color: var(--ink); }
+html[lang="ne"] body { font-family: Mukta, Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+html[lang="ne"] .hero-title, html[lang="ne"] .section h3, html[lang="ne"] .group-title, html[lang="ne"] .since,
+html[lang="ne"] .qr-dialog h2, html[lang="ne"] .footer h2 { font-family: "Playfair Display", Mukta, Georgia, serif; }
+html[lang="ne"] .np { display: none; }
+html[lang="ne"] .section .sub, html[lang="ne"] .eyebrow { letter-spacing: .04em; }
+
 .hero-title { font-family: "Playfair Display", Georgia, serif; color: var(--navy); font-size: clamp(1.35rem, 5.2vw, 1.9rem); margin: 0 0 6px; line-height: 1.15; }
 .np { margin: 4px 0 0; font-size: .9rem; color: #4a4f6a; }
 .eyebrow {

@@ -67,6 +67,12 @@ Hosting is GitHub Pages: Settings → Pages → "Deploy from a branch" → `main
 
 If the menu is hosted at a different address, regenerate the QR code with `python3 qr/make_qr.py https://your-new-address/`.
 
+## English / नेपाली
+- **The switch:** the **EN | नेपाली** switch sits at the top of the menu and in the footer. It's remembered on each phone, and phones set to Nepali open in Nepali. `?lang=ne` or `?lang=en` in the link forces a language.
+- **Default Nepali text:** dish and section names, buttons and labels are in `nepali.js`. Drink brand names stay in English.
+- **Corrections:** staff can override any dish in the admin (the **Nepali name** box, saved as item[5]) and any section (**Section name in Nepali**).
+- **Search:** works in both languages. कुखुरा, चिकेन and "chicken" find the same dishes.
+
 ## Search engines
 - `index.html` contains a plain-HTML copy of the whole menu plus Google menu data (schema.org `Restaurant` and `Menu`), between the `PRERENDER` markers, so search engines can read every dish and price without running JavaScript. The admin page refreshes this copy on every **Publish**. After editing `menu-data.js` by hand, run `node tools/prerender.js`.
 - Getting found (owner): add the site to Google Search Console, submit `sitemap.xml`, and use the menu link as the **Menu** link on the hotel's Google Business Profile and on gautamhotel.com.np.

@@ -9,6 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const ROOT = path.join(__dirname, "..");
 const Format = require(path.join(ROOT, "menu-format.js"));
+require(path.join(ROOT, "nepali.js"));
 const Prerender = require(path.join(ROOT, "prerender.js"));
 
 function setOutput(changed) {

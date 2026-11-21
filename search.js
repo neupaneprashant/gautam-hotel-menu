@@ -49,7 +49,19 @@
     egg: "egg", anda: "egg", phul: "egg",
     corn: "corn", makai: "corn",
     juice: "juice", jus: "juice",
-    pani: "water"
+    pani: "water",
+    // Nepali words -> the same canonical words, so "कुखुरा", "चिकेन" and "chicken" find the same dishes
+    "कुखुरा": "chicken", "कुखुराको": "chicken", "चिकेन": "chicken", "खसी": "mutton", "खसीको": "mutton", "मटन": "mutton",
+    "माछा": "fish", "माछाको": "fish", "फिस": "fish", "अन्डा": "egg", "च्याउ": "mushroom", "च्याउको": "mushroom",
+    "आलु": "alu", "पनिर": "paneer", "चिया": "tea", "भात": "rice", "दाल": "dal", "भेज": "veg", "तरकारी": "veg", "शाकाहारी": "veg",
+    "मांसाहारी": "nonveg", "ननभेज": "nonveg", "मासु": "meat", "मोमो": "momo", "चाउमिन": "chowmein", "चाउचाउ": "noodle", "नुडल्स": "noodle",
+    "कफी": "coffee", "जुस": "juice", "बियर": "beer", "वाइन": "wine", "चिल्ली": "chilli", "पिरो": "piro", "सेकुवा": "sekuwa",
+    "छोयला": "choila", "थुक्पा": "thukpa", "लस्सी": "lassi", "नान": "naan", "रोटी": "roti", "पराठा": "paratha", "बिरयानी": "biryani",
+    "पुलाउ": "pulau", "पिज्जा": "pizza", "बर्गर": "burger", "सुप": "soup", "स्टिम": "steam", "कोठे": "kothey", "फ्राई": "fry",
+    "फ्राइड": "fried", "पकौडा": "pakauda", "सादेको": "sadeko", "तन्दुरी": "tandoori", "टिक्का": "tikka", "कबाब": "kabab",
+    "मसला": "masala", "दूध": "milk", "पानी": "water", "कागती": "lemon", "मह": "honey", "बदाम": "peanut", "केराउ": "mattar",
+    "साग": "saag", "पालुङ्गो": "palak", "काउली": "gobi", "प्याज": "onion", "स्याउ": "apple", "केरा": "banana", "सुन्तला": "orange",
+    "ढिँडो": "dhido", "खाजा": "khaja", "खाना": "food", "पेय": "drink", "मिठाई": "dessert"
   };
 
   // extra words a section can be found by (keyed by section id)
@@ -94,12 +106,12 @@
   function words(text) {
     return String(text || "")
       .toLowerCase()
-      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .normalize("NFC").replace(/[\u00c0-\u024f]/g, function (c) { return c.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); })
       .replace(/non[\s-]*veg(etarian)?/g, " nonveg ")
       .replace(/mo\s*:\s*mo/g, "momo")
       .replace(/soft\s+drink/g, "softdrink")
       .replace(/'/g, "")
-      .split(/[^a-z0-9]+/)
+      .split(/[^a-z0-9\u0900-\u097f]+/)
       .filter(Boolean);
   }
   function canon(w) {
@@ -158,7 +170,8 @@
     return Array.isArray(item[1]) ? (section.cols || section.sizes || []) : [];
   }
   function baseWords(item, section) {
-    return tokens([item[0], item[3] || "", item[4] || "", section.title, SECTION_WORDS[section.id] || ""].join(" "));
+    var NE = window.MENU_NE, ne = NE ? [NE.name(section, item), NE.desc(section, item), NE.section(section).title].join(" ") : "";
+    return tokens([item[0], item[3] || "", item[4] || "", section.title, SECTION_WORDS[section.id] || "", ne].join(" "));
   }
 
   // all query words must be found somewhere in the dish, its other names, its section, its columns or its diet
@@ -195,7 +208,7 @@
   // wrap the matching words of an already-escaped display string in <mark>
   function highlight(escapedHTML, qTokens) {
     if (!qTokens.length) return escapedHTML;
-    return escapedHTML.replace(/[A-Za-z0-9À-ɏ']+/g, function (word) {
+    return escapedHTML.replace(/[A-Za-z0-9\u00C0-\u024F\u0900-\u097F']+/g, function (word) {
       var ws = tokens(word);
       var hit = ws.some(function (w) { return qTokens.some(function (q) { return wordMatch(q, w); }); });
       return hit ? "<mark>" + word + "</mark>" : word;

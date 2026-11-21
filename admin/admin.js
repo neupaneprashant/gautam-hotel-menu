@@ -134,6 +134,14 @@
     card.classList.toggle("changed", !!o && itemJS(o) !== itemJS(cur));
   }
 
+  // default Nepali names from ../nepali.js, shown as hints in the Nepali boxes
+  function neDefault(sec, it) {
+    var NE = window.MENU_NE;
+    if (!NE) return "";
+    return NE.items[sec.id + "|" + it[0]] || NE.items[it[0]] || "";
+  }
+  function neSection(sec) { var s = window.MENU_NE && window.MENU_NE.sections[sec.id]; return { title: s ? s[0] : "", tagline: s ? s[1] : "" }; }
+
   /* ───────── rendering ───────── */
   function itemHTML(sec, si, list, it, ii) {
     var base = 'data-si="' + si + '" data-list="' + list + '" data-ii="' + ii + '"';
@@ -166,6 +174,8 @@
       "</div>" + price +
       '<input class="desc" ' + base + ' data-field="desc" value="' + esc(it[3] || "") + '" placeholder="Description (optional)" aria-label="Description">' +
       '<input class="desc" ' + base + ' data-field="aliases" value="' + esc(it[4] || "") + '" placeholder="Also known as (optional), e.g. C momo, chicken dumpling" aria-label="Also known as">' +
+      '<input class="desc ne" lang="ne" ' + base + ' data-field="ne" value="' + esc(it[5] || "") + '" placeholder="' +
+        esc("नेपाली नाम" + (neDefault(sec, it) ? ": " + neDefault(sec, it) : " (optional)")) + '" aria-label="Nepali name">' +
       "</div>";
   }
 
@@ -179,6 +189,8 @@
       '<option value="food"' + (sec.group === "food" ? " selected" : "") + '>Food</option>' +
       '<option value="drinks"' + (sec.group === "drinks" ? " selected" : "") + ">Drinks</option></select></div>" +
       '<div class="wide"><label>Line under the name</label><input ' + b + ' data-sfield="tagline" value="' + esc(sec.tagline || "") + '" placeholder="optional"></div>' +
+      '<div><label>Section name in Nepali</label><input lang="ne" ' + b + ' data-sfield="title_ne" value="' + esc(sec.title_ne || "") + '" placeholder="' + esc(neSection(sec).title || "नेपाली नाम") + '"></div>' +
+      '<div><label>Line under it in Nepali</label><input lang="ne" ' + b + ' data-sfield="tagline_ne" value="' + esc(sec.tagline_ne || "") + '" placeholder="' + esc(neSection(sec).tagline || "optional") + '"></div>' +
       '<div class="wide"><label>Note at the bottom</label><input ' + b + ' data-sfield="note" value="' + esc(sec.note || "") + '" placeholder="optional, e.g. Corkage charge 25%"></div>' +
       ((sec.cols || sec.sizes) ? '<div class="wide"><label>Price table columns (comma separated)</label><input ' + b + ' data-sfield="' +
         (sec.cols ? "cols" : "sizes") + '" value="' + esc((sec.cols || sec.sizes).join(", ")) + '"></div>' : "") +
@@ -230,7 +242,7 @@
         });
         if (sec.defaultSize !== undefined && sec.defaultSize >= labels.length) sec.defaultSize = labels.length - 1;
         if (e.type === "change") render({ id: sec.id });
-      } else if (f === "tagline" || f === "note") {
+      } else if (f === "tagline" || f === "note" || f === "title_ne" || f === "tagline_ne") {
         if (v.trim()) sec[f] = v; else delete sec[f];
       } else {                                         // title or group
         sec[f] = v;
@@ -245,6 +257,7 @@
     if (field === "name") it[0] = el.value;
     else if (field === "desc") { it[3] = el.value.trim() ? el.value : null; tidy(it); }
     else if (field === "aliases") { while (it.length < 4) it.push(null); it[4] = el.value.trim() ? el.value : null; tidy(it); }
+    else if (field === "ne") { while (it.length < 5) it.push(null); it[5] = el.value.trim() ? el.value.trim() : null; tidy(it); }
     else if (field === "diet") { it[2] = el.value || null; tidy(it); }
     else if (field === "price" || field === "cell") {
       r = field === "price" ? readSingle(el.value) : readCell(el.value);

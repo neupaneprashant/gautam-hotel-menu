@@ -5,6 +5,25 @@
   var state = { q: "", diet: "all", group: "all" };
   var sizeSel = {};   // chosen size per sized section (phones)
 
+  /* ── English / नेपाली ── */
+  var NE = window.MENU_NE || null, LANG_KEY = "gautam-menu-lang";
+  var lang = (function () {
+    var q = (location.search.match(/[?&]lang=(en|ne)/) || [])[1];
+    if (q) return q;
+    try { var saved = localStorage.getItem(LANG_KEY); if (saved === "en" || saved === "ne") return saved; } catch (e) {}
+    var langs = navigator.languages || [navigator.language || ""];
+    return NE && langs.some(function (l) { return /^ne\b/i.test(l); }) ? "ne" : "en";
+  })();
+  var isNe = function () { return lang === "ne" && !!NE; };
+  function T(s) { return isNe() && NE.ui[s] ? NE.ui[s] : s; }
+  function nm(sec, it) { return (isNe() && NE.name(sec, it)) || it[0]; }
+  function dsc(sec, it) { return (isNe() && NE.desc(sec, it)) || it[3] || ""; }
+  function secText(sec) {
+    var n = isNe() ? NE.section(sec) : {};
+    return { title: n.title || sec.title, tagline: n.tagline || sec.tagline || "", note: n.note || sec.note || "" };
+  }
+  function colText(c) { return (isNe() && NE.cols[c]) || c; }
+
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 
@@ -26,17 +45,17 @@
     return String(p).replace(/\d{4,}/g, function (n) { return Number(n).toLocaleString("en-IN"); });
   }
   function priceHTML(p) {
-    if (p === null || p === undefined || p === "ask") return '<span class="price ask">Ask staff</span>';
-    return '<span class="price"><span class="rs">Rs</span>' + esc(fmt(p)) + "</span>";
+    if (p === null || p === undefined || p === "ask") return '<span class="price ask">' + T("Ask staff") + "</span>";
+    return '<span class="price"><span class="rs">' + T("Rs") + "</span>" + esc(fmt(p)) + "</span>";
   }
   function cellHTML(p) {
-    if (p === null || p === undefined) return '<span class="na" title="Not available in this size">—</span>';
-    if (p === "ask") return '<span class="na ask" title="Please ask staff">Ask</span>';
-    return '<span class="rs">Rs</span>' + esc(fmt(p));
+    if (p === null || p === undefined) return '<span class="na" title="' + T("Not available in this size") + '">—</span>';
+    if (p === "ask") return '<span class="na ask" title="' + T("Please ask staff") + '">' + T("Ask") + "</span>";
+    return '<span class="rs">' + T("Rs") + "</span>" + esc(fmt(p));
   }
   function dotHTML(d) {
     if (!d) return "";
-    var label = { v: "Vegetarian", n: "Non-vegetarian", b: "Veg and non-veg options" }[d];
+    var label = T({ v: "Vegetarian", n: "Non-vegetarian", b: "Veg and non-veg options" }[d]);
     return '<span class="dot ' + d + '" role="img" aria-label="' + label + '" title="' + label + '"></span>';
   }
 
@@ -52,8 +71,8 @@
   function listHTML(sec, items) {
     return items.map(function (it) {
       return '<li class="item"><div class="item-row"><span class="item-name">' + dotHTML(it[2]) +
-        "<span>" + nb(hl(it[0])) + '</span></span><span class="leader"></span>' + priceHTML(it[1]) + "</div>" +
-        (it[3] ? '<p class="desc">' + hl(it[3]) + "</p>" : "") + "</li>";
+        "<span>" + nb(hl(nm(sec, it))) + '</span></span><span class="leader"></span>' + priceHTML(it[1]) + "</div>" +
+        (dsc(sec, it) ? '<p class="desc">' + hl(dsc(sec, it)) + "</p>" : "") + "</li>";
     }).join("");
   }
 
@@ -68,7 +87,8 @@
   }
 
   function sectionHTML(sec, items, extra) {
-    var head = '<h3>' + esc(sec.title) + "</h3>" + (sec.tagline ? '<p class="sub">' + esc(sec.tagline) + "</p>" : "");
+    var st = secText(sec);
+    var head = '<h3>' + esc(st.title) + "</h3>" + (st.tagline ? '<p class="sub">' + esc(st.tagline) + "</p>" : "");
     var top = '<div class="section-head"><span class="ornament" aria-hidden="true">✦</span>' + head + "</div>";
 
     var body;
@@ -76,12 +96,12 @@
       body = '<div class="items-wrap">';
       if (items.length) {
         var heads = hitHeads(sec, items);
-        body += '<table class="ptable"><thead><tr><th scope="col">Item</th>' +
-          sec.cols.map(function (c, k) { return '<th scope="col"' + (heads[k] ? ' class="hit"' : "") + ">" + esc(c) + "</th>"; }).join("") +
+        body += '<table class="ptable"><thead><tr><th scope="col">' + T("Item") + "</th>" +
+          sec.cols.map(function (c, k) { return '<th scope="col"' + (heads[k] ? ' class="hit"' : "") + ">" + esc(colText(c)) + "</th>"; }).join("") +
           "</tr></thead><tbody>" +
           items.map(function (it) {
             var hits = colHits(sec, it);
-            return '<tr><td><span class="item-name">' + dotHTML(it[2]) + "<span>" + nb(hl(it[0])) + "</span></span></td>" +
+            return '<tr><td><span class="item-name">' + dotHTML(it[2]) + "<span>" + nb(hl(nm(sec, it))) + "</span></span></td>" +
               it[1].map(function (p, k) { return "<td" + (hits.indexOf(k) !== -1 ? ' class="hit"' : "") + ">" + cellHTML(p) + "</td>"; }).join("") +
               "</tr>";
           }).join("") + "</tbody></table>";
@@ -93,7 +113,7 @@
     } else {
       body = '<ul class="items">' + listHTML(sec, items) + "</ul>";
     }
-    if (sec.note) body += '<p class="sec-note">' + esc(sec.note) + "</p>";
+    if (st.note) body += '<p class="sec-note">' + esc(st.note) + "</p>";
     return '<article class="section' + (sec.sizes ? " wide" : "") + '" id="' + esc(sec.id) + '" data-group="' + sec.group + '">' + top + body + "</article>";
   }
 
@@ -102,15 +122,15 @@
     var sel = sizeSel[sec.id] != null ? sizeSel[sec.id] : (sec.defaultSize || 0);
     var heads = hitHeads(sec, items), searched = Object.keys(heads);
     if (searched.length && sizeSel[sec.id + ":q"] !== state.q) sel = +searched[0];   // "glenfiddich 30" -> show 30 ml
-    var table = '<div class="size-table-wrap"><table class="ptable size-table"><thead><tr><th scope="col">Drink</th>' +
+    var table = '<div class="size-table-wrap"><table class="ptable size-table"><thead><tr><th scope="col">' + T("Drink") + "</th>" +
       sec.sizes.map(function (s, k) { return '<th scope="col"' + (heads[k] ? ' class="hit"' : "") + ">" + esc(s) + "</th>"; }).join("") + "</tr></thead><tbody>" +
       items.map(function (it) {
         var hits = colHits(sec, it);
-        return "<tr><td>" + nb(hl(it[0])) + "</td>" + it[1].map(function (p, k) {
+        return "<tr><td>" + nb(hl(nm(sec, it))) + "</td>" + it[1].map(function (p, k) {
           return "<td" + (hits.indexOf(k) !== -1 ? ' class="hit"' : "") + ">" + cellHTML(p) + "</td>";
         }).join("") + "</tr>";
       }).join("") + "</tbody></table></div>";
-    var picker = '<div class="size-pick"><p class="size-label" id="lbl-' + esc(sec.id) + '">Choose a size</p>' +
+    var picker = '<div class="size-pick"><p class="size-label" id="lbl-' + esc(sec.id) + '">' + T("Choose a size") + "</p>" +
       '<div class="size-chips" role="radiogroup" aria-labelledby="lbl-' + esc(sec.id) + '">' +
       sec.sizes.map(function (s, i) {
         return '<button type="button" class="size-chip' + (i === sel ? " is-active" : "") + '" role="radio" aria-checked="' + (i === sel) +
@@ -118,8 +138,8 @@
       }).join("") + "</div>" +
       '<ul class="items">' + items.map(function (it) {
         var p = it[1][sel];
-        var price = p === null ? '<span class="price na-price" title="Not available in this size">—</span>' : priceHTML(p);
-        return '<li class="item' + (p === null ? " unavailable" : "") + '"><div class="item-row"><span class="item-name"><span>' + nb(hl(it[0])) +
+        var price = p === null ? '<span class="price na-price" title="' + T("Not available in this size") + '">—</span>' : priceHTML(p);
+        return '<li class="item' + (p === null ? " unavailable" : "") + '"><div class="item-row"><span class="item-name"><span>' + nb(hl(nm(sec, it))) +
           '</span></span><span class="leader"></span>' + price + "</div></li>";
       }).join("") + "</ul></div>";
     return '<div class="items-wrap">' + table + picker + "</div>";
@@ -134,11 +154,11 @@
       var extra = (sec.extra || []).filter(function (it) { return itemMatches(sec, it); });
       if (!items.length && !extra.length) return;
       if (sec.group !== lastGroup) {
-        html += '<h2 class="group-title">' + (sec.group === "food" ? "Food" : "Drinks &amp; More") + "</h2>";
+        html += '<h2 class="group-title">' + esc(T(sec.group === "food" ? "Food" : "Drinks & More")) + "</h2>";
         lastGroup = sec.group;
       }
       html += sectionHTML(sec, items, extra);
-      cats += '<a class="cat" href="#' + esc(sec.id) + '" data-id="' + esc(sec.id) + '">' + esc(sec.title) + "</a>";
+      cats += '<a class="cat" href="#' + esc(sec.id) + '" data-id="' + esc(sec.id) + '">' + esc(secText(sec).title) + "</a>";
       count++;
     });
     $("#sections").innerHTML = html;
@@ -196,7 +216,7 @@
     $("#qrShare").addEventListener("click", function () {
       var btn = this, data = { title: "Gautam Hotel Menu", text: "Gautam Hotel, Bardibas: menu", url: menuUrl };
       if (navigator.share) { navigator.share(data).catch(function () {}); return; }
-      var done = function () { btn.textContent = "Link copied ✓"; setTimeout(function () { btn.textContent = "Share link"; }, 2000); };
+      var done = function () { btn.textContent = T("Link copied ✓"); setTimeout(function () { btn.textContent = T("Share link"); }, 2000); };
       if (navigator.clipboard) navigator.clipboard.writeText(menuUrl).then(done, function () { window.prompt("Copy this link:", menuUrl); });
       else window.prompt("Copy this link:", menuUrl);
     });
@@ -288,6 +308,42 @@
     window.scrollTo({ top: y, behavior: reduceMotion ? "auto" : "smooth" });
     if (history.replaceState) history.replaceState(null, "", "#" + sec.id);
   });
+
+  // fixed page text: elements marked data-i18n keep their English text in data-en
+  var fontLoaded = false;
+  function applyLang() {
+    document.documentElement.lang = isNe() ? "ne" : "en";
+    $$("[data-i18n]").forEach(function (el) {
+      if (!el.hasAttribute("data-en")) el.setAttribute("data-en", el.textContent);
+      el.textContent = T(el.getAttribute("data-en"));
+    });
+    $$("[data-i18n-ph]").forEach(function (el) {
+      if (!el.hasAttribute("data-en")) el.setAttribute("data-en", el.getAttribute("placeholder"));
+      el.setAttribute("placeholder", T(el.getAttribute("data-en")));
+    });
+    $$("[data-lang]").forEach(function (b) {
+      var on = b.dataset.lang === lang;
+      b.classList.toggle("is-active", on); b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    if (isNe() && !fontLoaded) {                 // Devanagari font, only when someone picks नेपाली
+      fontLoaded = true;
+      var l = document.createElement("link");
+      l.rel = "stylesheet"; l.href = "https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;600;700&display=swap";
+      // the toolbar's height changes once the font arrives: measure it again
+      l.onload = function () { (document.fonts ? document.fonts.ready : Promise.resolve()).then(function () { setTimeout(measure, 50); }); };
+      document.head.appendChild(l);
+    }
+  }
+  function setLang(next) {
+    if (next === lang) return;
+    lang = next;
+    try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
+    applyLang();
+    render();
+    measure();
+  }
+  $$("[data-lang]").forEach(function (b) { b.addEventListener("click", function () { setLang(b.dataset.lang); }); });
+  applyLang();
 
   // live-menu.js calls this when Firebase has newer prices than the copy built into the page
   window.MenuApp = {

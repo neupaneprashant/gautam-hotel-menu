@@ -7,6 +7,7 @@
 const fs = require("fs");
 const path = require("path");
 const ROOT = path.join(__dirname, "..");
+require(path.join(ROOT, "nepali.js"));          // Nepali names for Google's menu data
 const P = require(path.join(ROOT, "prerender.js"));
 
 const sandbox = {};

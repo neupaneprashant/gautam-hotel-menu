@@ -107,6 +107,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--n
 .cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin-top: 8px; }
 .cells label { margin: 0 0 3px; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .desc { margin-top: 8px; min-height: 40px; font-size: .9rem; }
+.desc.ne { font-family: Mukta, Inter, system-ui, sans-serif; }
 input.invalid { border-color: var(--bad); background: #fff3f2; }
 .list-title { margin: 16px 0 0; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 .add-item { margin-top: 10px; width: 100%; border: 1.5px dashed var(--navy); color: var(--navy); background: #fff; }
