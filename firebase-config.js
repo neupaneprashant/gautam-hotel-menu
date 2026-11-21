@@ -3,7 +3,8 @@
  * These values are public by design: Firebase web config is meant to sit in
  * page code. Access is controlled by Firestore security rules (firestore.rules)
  * and by who has an account in Firebase Authentication.
- * Set window.FIREBASE_CONFIG = null to switch Firebase off (the site then uses menu-data.js only).
+ * Setting window.FIREBASE_CONFIG = null switches Firebase off: guests then see the copy in menu-data.js
+ * and the admin page cannot save.
  */
 window.FIREBASE_CONFIG = {
   apiKey: "AIzaSyBMjY4tfuhTr4aPdVIU9SU9gfuV4gIF3Jo",

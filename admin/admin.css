@@ -49,9 +49,6 @@ input[type=text], input[type=password], input[type=search], input[type=email], i
   width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 16px;
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(0, 43, 132, .12); }
-.tabs { display: flex; gap: 4px; background: #f0e8de; border-radius: 999px; padding: 4px; margin-top: 14px; }
-.tab { flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 9px 8px; font-weight: 600; font-size: .88rem; color: var(--muted); }
-.tab.is-active { background: var(--navy); color: #fff; }
 #emailForm .btn { width: 100%; margin-top: 16px; }
 .small { font-size: .82rem; }
 .linkish { display: block; margin: 14px auto 0; border: 0; background: none; color: var(--navy); font-weight: 600; text-decoration: underline; padding: 6px; }
@@ -63,11 +60,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--n
 .modal h3 { margin: 18px 0 0; font-size: 1rem; color: var(--navy); }
 .check { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--ink); font-size: .9rem; }
 .check input { width: 20px; height: 20px; }
-#loginForm .btn { width: 100%; margin-top: 16px; }
 .error { color: var(--bad); font-size: .9rem; margin: 12px 0 0; }
-.help { margin-top: 18px; font-size: .9rem; }
-.help summary { cursor: pointer; color: var(--navy); font-weight: 600; }
-.help li { margin: 6px 0; }
+.help-note { margin-top: 18px; }
 
 /* editor */
 .editor { max-width: 860px; margin: 0 auto; padding: 16px; }
