@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=20261117g">
+  <link rel="stylesheet" href="admin.css?v=20261121a">
 </head>
 <body>
 
@@ -93,6 +93,16 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
+<div class="loading" id="loading" role="status" aria-live="polite" hidden>
+  <div class="loading-card">
+    <img class="loading-logo" src="../logo.webp" alt="" width="96" height="60">
+    <div class="spinner" aria-hidden="true"></div>
+    <p class="loading-text" id="loadingText">Loading…</p>
+    <p class="loading-slow" id="loadingSlow" hidden>This is taking longer than usual. Check the internet connection.
+      <button type="button" class="btn btn-small" id="loadingReload">Reload page</button></p>
+  </div>
+</div>
+
 <dialog class="modal" id="sectionDialog">
   <form method="dialog" id="sectionForm">
     <h2>New section</h2>
@@ -170,11 +180,11 @@
   <div class="modal-actions"><button class="btn btn-ghost" type="button" id="closeHistory">Close</button></div>
 </dialog>
 
-<script src="../firebase-config.js?v=20261117g"></script>
-<script src="../menu-data.js?v=20261117g"></script>
-<script src="../menu-format.js?v=20261117g"></script>
-<script src="../search.js?v=20261117g"></script>
-<script src="../prerender.js?v=20261117g"></script>
-<script src="admin.js?v=20261117g"></script>
+<script src="../firebase-config.js?v=20261121a"></script>
+<script src="../menu-data.js?v=20261121a"></script>
+<script src="../menu-format.js?v=20261121a"></script>
+<script src="../search.js?v=20261121a"></script>
+<script src="../prerender.js?v=20261121a"></script>
+<script src="admin.js?v=20261121a"></script>
 </body>
 </html>

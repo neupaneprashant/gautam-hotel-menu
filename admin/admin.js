@@ -601,7 +601,19 @@
     if (/permission-denied/.test(c)) return "Your account isn't allowed to do that.";
     return (e && e.message) || "Something went wrong.";
   }
-  function showLoginError(msg) { $("#emailError").textContent = msg; $("#emailError").hidden = false; }
+  function showLoginError(msg) { busy(false); $("#emailError").textContent = msg; $("#emailError").hidden = false; }
+
+  // full-screen "working…" indicator; offers a Reload button if a step hangs
+  var slowTimer;
+  function busy(msg) {
+    var box = $("#loading");
+    clearTimeout(slowTimer);
+    if (!msg) { box.hidden = true; $("#loadingSlow").hidden = true; return; }
+    $("#loadingText").textContent = msg;
+    box.hidden = false; $("#loadingSlow").hidden = true;
+    slowTimer = setTimeout(function () { $("#loadingSlow").hidden = false; }, 12000);
+  }
+  $("#loadingReload").addEventListener("click", function () { location.reload(); });
 
   function fbStart() {
     $(".tabs").hidden = true; $("#loginForm").hidden = true; $(".help").hidden = true;
@@ -615,21 +627,26 @@
     $("#teamList").addEventListener("click", function (e) { var b = e.target.closest("[data-remove]"); if (b) fbRemovePerson(b.dataset.remove); });
     $("#historyList").addEventListener("click", function (e) { var b = e.target.closest("[data-load]"); if (b) fbLoadVersion(b.dataset.load); });
     $("#who").textContent = "Loading…";
+    busy("Connecting…");
     fbInit().then(function () {
       $("#who").textContent = "Not signed in";
-      FB.A.onAuthStateChanged(FB.auth, function (user) { if (user) fbEnter(user); });
+      FB.A.onAuthStateChanged(FB.auth, function (user) {
+        if (user) fbEnter(user);
+        else if (!fbEntering) busy(false);           // not signed in: show the sign-in form
+      });
     }).catch(function () { showLoginError("Could not reach Firebase. Check the internet connection and reload."); });
   }
 
   function fbSignIn(email, password, remember) {
     var btn = $("#emailBtn");
-    $("#emailError").hidden = true; btn.disabled = true; btn.textContent = "Signing in…";
+    $("#emailError").hidden = true; btn.disabled = true; btn.textContent = "Signing in…"; btn.classList.add("is-busy");
+    busy("Signing in…");
     fbInit().then(function () {
       return FB.A.setPersistence(FB.auth, remember ? FB.A.browserLocalPersistence : FB.A.browserSessionPersistence);
     }).then(function () {
       return FB.A.signInWithEmailAndPassword(FB.auth, normEmail(email), password);
     }).catch(function (e) { showLoginError(fbMessage(e)); })
-      .then(function () { btn.disabled = false; btn.textContent = "Sign in"; });
+      .then(function () { btn.disabled = false; btn.textContent = "Sign in"; btn.classList.remove("is-busy"); });
   }
 
   function fbForgot() {
@@ -643,10 +660,12 @@
   function fbEnter(user) {
     if (fbEntering) return; fbEntering = true;
     var email = normEmail(user.email), F = FB.F;
+    busy("Checking your access…");
     F.getDoc(F.doc(FB.db, "admins", email)).then(function (snap) {
       if (!snap.exists()) { var e = new Error("not admin"); e.code = "not-admin"; throw e; }
       fbRole = snap.data().role === "owner" ? "owner" : "editor";
       signedInAs = email;
+      busy("Loading the menu…");
       return F.getDoc(F.doc(FB.db, "menu", "current"));
     }).then(function (m) {
       if (m.exists()) { data = JSON.parse(m.data().json); fbVersion = m.data().version || 0; fbSeed = false; }
@@ -656,6 +675,7 @@
       $("#login").hidden = true; $("#editor").hidden = false; $("#publishBar").hidden = false; $("#signOut").hidden = false;
       $("#teamBtn").hidden = fbRole !== "owner"; $("#historyBtn").hidden = false; $("#loginsBtn").hidden = true;
       render();
+      busy(false);
       if (fbSeed) toast("First time with Firebase: tap Publish once to move the menu there.", { ms: 9000 });
     }).catch(function (e) {
       var msg = e.code === "not-admin" || /permission-denied/.test(e.code || "") ?
@@ -671,7 +691,7 @@
     if (Object.keys(bad).length) { toast("Fix the price marked in red first.", { bad: true }); return; }
     var n = changeCount();
     if (!n && !fbSeed) return;
-    var btn = $("#publish"); btn.disabled = true; btn.textContent = "Publishing…";
+    var btn = $("#publish"); btn.disabled = true; btn.textContent = "Publishing…"; btn.classList.add("is-busy");
     var F = FB.F, ref = F.doc(FB.db, "menu", "current"), json = JSON.stringify(data), next;
     F.runTransaction(FB.db, function (tx) {
       return tx.get(ref).then(function (s) {
@@ -691,11 +711,12 @@
       if (e.code === "conflict") toast("Someone else published a change since you opened the menu. Reload to get the latest version, then make your change again.",
         { bad: true, sticky: true, action: "Reload", onAction: function () { location.reload(); } });
       else toast("Could not publish: " + fbMessage(e), { bad: true, sticky: true });
-    }).then(function () { btn.textContent = "Publish"; refreshBar(); });
+    }).then(function () { btn.textContent = "Publish"; btn.classList.remove("is-busy"); refreshBar(); });
   }
 
   function fbSignOut() {
     if (data && changeCount() && !confirm("You have changes that are not published. Sign out anyway?")) return;
+    busy("Signing out…");
     FB.A.signOut(FB.auth).then(function () { location.reload(); });
   }
 
